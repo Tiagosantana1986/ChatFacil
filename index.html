@@ -4,98 +4,39 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>ChatFacil · Comunicação inteligente</title>
-  <!-- Fontes e ícones -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
   <style>
     * { -webkit-tap-highlight-color: transparent; }
-    body {
-      margin: 0;
-      background: #0a1014;
-      font-family: 'Segoe UI', 'Helvetica Neue', system-ui, sans-serif;
-    }
-    /* Cores WhatsApp */
+    body { margin: 0; background: #0a1014; font-family: 'Segoe UI', 'Helvetica Neue', system-ui, sans-serif; }
     .bg-whatsapp-header { background: #075E54; }
     .bg-whatsapp-chat { background: #e5ded8; }
     .bg-whatsapp-sidebar { background: #111b21; }
-    .bg-whatsapp-message-out { background: #d9fdd3; }
-    .bg-whatsapp-message-in { background: #ffffff; }
     .text-whatsapp-green { color: #25d366; }
-    
-    /* Scroll customizado */
     .scroll-suave::-webkit-scrollbar { width: 5px; }
     .scroll-suave::-webkit-scrollbar-thumb { background: #374045; border-radius: 10px; }
-    
-    /* Balões de mensagem */
-    .msg-propria {
-      background: #d9fdd3;
-      color: #111b21;
-      margin-left: auto;
-      border-radius: 8px 0 8px 8px;
-    }
-    .msg-outro {
-      background: #ffffff;
-      color: #111b21;
-      border-radius: 0 8px 8px 8px;
-    }
-    
-    /* Badge de não lidas */
-    .badge-unread {
-      background-color: #25d366;
-      color: #111b21;
-      border-radius: 9999px;
-      padding: 0.125rem 0.5rem;
-      font-size: 0.7rem;
-      font-weight: bold;
-      margin-left: 0.5rem;
-    }
-    
-    /* Avatar placeholder */
-    .avatar-placeholder {
-      background: #6a7178;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: 500;
-      text-transform: uppercase;
-    }
-    
-    /* Campo de pesquisa */
-    .search-input {
-      background: #202c33;
-      border-radius: 20px;
-      padding: 8px 16px;
-      color: white;
-      border: none;
-    }
+    .msg-propria { background: #d9fdd3; color: #111b21; margin-left: auto; border-radius: 8px 0 8px 8px; }
+    .msg-outro { background: #ffffff; color: #111b21; border-radius: 0 8px 8px 8px; }
+    .badge-unread { background-color: #25d366; color: #111b21; border-radius: 9999px; padding: 0.125rem 0.5rem; font-size: 0.7rem; font-weight: bold; margin-left: 0.5rem; }
+    .avatar-placeholder { background: #6a7178; display: flex; align-items: center; justify-content: center; color: white; font-weight: 500; text-transform: uppercase; }
+    .search-input { background: #202c33; border-radius: 20px; padding: 8px 16px; color: white; border: none; }
     .search-input::placeholder { color: #8696a0; }
-    
-    /* Ajuste para área de mensagens maior */
-    .chat-messages-container {
-      flex: 1 1 0%;
-      min-height: 0;
-    }
+    .chat-messages-container { flex: 1 1 0%; min-height: 0; }
   </style>
 </head>
 <body class="text-gray-200">
   <div id="app" class="h-screen flex"></div>
 
   <script>
-    const { createApp, ref, reactive, computed, watch, nextTick, onMounted } = Vue;
+    const { createApp, ref, reactive, computed, watch, nextTick } = Vue;
 
     const STORAGE_KEY = 'chat_facil_db';
     const MAX_FILE_SIZE = 2 * 1024 * 1024;
 
     const defaultDB = {
       users: [
-        { 
-          id: 'admin1', login: 'admin', password: 'admin123', role: 'admin', 
-          status: 'active', hidden: false, createdBy: null, approvedBy: null, 
-          createdAt: Date.now(), passwordChanged: true,
-          presence: 'online', avatar: null
-        }
+        { id: 'admin1', login: 'admin', password: 'admin123', role: 'admin', status: 'active', hidden: false, createdBy: null, approvedBy: null, createdAt: Date.now(), passwordChanged: true, presence: 'online', avatar: null }
       ],
       conversations: [],
       groups: [],
@@ -106,85 +47,57 @@
 
     function loadDB() {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (!stored) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultDB));
-        return JSON.parse(JSON.stringify(defaultDB));
-      }
+      if (!stored) { localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultDB)); return JSON.parse(JSON.stringify(defaultDB)); }
       try {
         const db = JSON.parse(stored);
         if (!db.lastRead) db.lastRead = {};
-        db.users.forEach(u => { 
-          if (u.passwordChanged === undefined) u.passwordChanged = (u.role === 'admin');
-          if (!u.presence) u.presence = 'online';
-          if (!u.avatar) u.avatar = null;
-        });
+        db.users.forEach(u => { if (u.passwordChanged === undefined) u.passwordChanged = (u.role === 'admin'); if (!u.presence) u.presence = 'online'; if (!u.avatar) u.avatar = null; });
         return db;
-      } catch (e) {
-        return JSON.parse(JSON.stringify(defaultDB));
-      }
+      } catch (e) { return JSON.parse(JSON.stringify(defaultDB)); }
     }
 
-    function saveDB(db) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
-    }
-
-    function genId() {
-      return Date.now() + '-' + Math.random().toString(36).substr(2, 6);
-    }
+    function saveDB(db) { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); }
+    function genId() { return Date.now() + '-' + Math.random().toString(36).substr(2, 6); }
 
     const app = createApp({
       setup() {
         const db = reactive(loadDB());
-        
-        watch(db, (newVal) => {
-          saveDB(newVal);
-        }, { deep: true });
+        watch(db, (newVal) => { saveDB(newVal); }, { deep: true });
 
         const currentUser = ref(null);
         const loginInput = ref('');
         const senhaInput = ref('');
         const erroLogin = ref('');
-
         const forcePasswordChange = ref(false);
         const newPassword1 = ref('');
         const newPassword2 = ref('');
         const erroSenha = ref('');
-
         const showAdminPanel = ref(false);
         const showNewGroupModal = ref(false);
         const showNewUserModal = ref(false);
         const showProfileModal = ref(false);
-
         const newUserName = ref('');
         const newUserPass = ref('');
         const newUserAutoApprove = ref(true);
         const newGroupName = ref('');
         const selectedGroupMembers = ref([]);
-
         const activeChat = reactive({ type: null, id: null, name: '' });
         const newMessage = ref('');
         const fileInput = ref(null);
         const searchQuery = ref('');
-
-        // Perfil
+        const novaConversaId = ref('');       // <-- ADICIONADO
         const editingPresence = ref('online');
         const avatarInput = ref(null);
 
-        // ========== COMPUTED ==========
+        // Computed
         const visibleUsers = computed(() => {
           if (!currentUser.value) return [];
-          return db.users.filter(u => 
-            u.id !== currentUser.value.id &&
-            u.status === 'active' &&
-            !u.hidden
-          );
+          return db.users.filter(u => u.id !== currentUser.value.id && u.status === 'active' && !u.hidden);
         });
 
         const myPrivateChats = computed(() => {
           if (!currentUser.value) return [];
-          const convs = db.conversations.filter(c => 
-            c.user1 === currentUser.value.id || c.user2 === currentUser.value.id
-          );
+          const convs = db.conversations.filter(c => c.user1 === currentUser.value.id || c.user2 === currentUser.value.id);
           let result = convs.map(c => {
             const otherId = c.user1 === currentUser.value.id ? c.user2 : c.user1;
             const other = db.users.find(u => u.id === otherId);
@@ -192,10 +105,7 @@
             const lastMsg = db.messages.filter(m => m.conversationId === c.id).sort((a,b) => b.createdAt - a.createdAt)[0];
             return { ...c, other, lastMsg };
           }).filter(c => c !== null);
-          
-          if (searchQuery.value) {
-            result = result.filter(c => c.other.login.toLowerCase().includes(searchQuery.value.toLowerCase()));
-          }
+          if (searchQuery.value) result = result.filter(c => c.other.login.toLowerCase().includes(searchQuery.value.toLowerCase()));
           return result;
         });
 
@@ -207,329 +117,174 @@
 
         const activeMessages = computed(() => {
           if (!activeChat.id) return [];
-          if (activeChat.type === 'private') {
-            return db.messages.filter(m => m.conversationId === activeChat.id).sort((a,b) => a.createdAt - b.createdAt);
-          } else if (activeChat.type === 'group') {
-            return db.messages.filter(m => m.groupId === activeChat.id).sort((a,b) => a.createdAt - b.createdAt);
-          }
+          if (activeChat.type === 'private') return db.messages.filter(m => m.conversationId === activeChat.id).sort((a,b) => a.createdAt - b.createdAt);
+          else if (activeChat.type === 'group') return db.messages.filter(m => m.groupId === activeChat.id).sort((a,b) => a.createdAt - b.createdAt);
           return [];
         });
 
-        const adminUserList = computed(() => {
-          return db.users.filter(u => u.role !== 'admin');
-        });
+        const adminUserList = computed(() => db.users.filter(u => u.role !== 'admin'));
 
-        // ========== PRESENÇA E AVATAR ==========
-        function getPresenceDot(presence) {
-          const map = { 'online': '🟢', 'busy': '🟡', 'away': '🟠', 'offline': '🔴' };
-          return map[presence] || '⚪';
-        }
+        // Helpers
+        function getPresenceDot(p) { const map = { 'online':'🟢','busy':'🟡','away':'🟠','offline':'🔴' }; return map[p]||'⚪'; }
+        function getInitials(l) { return l.substring(0,2).toUpperCase(); }
+        function formatLastMessageTime(ts) { if(!ts) return ''; const d = new Date(ts); return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
+        function getSenderName(id) { const u = db.users.find(u => u.id === id); return u ? u.login : 'Desconhecido'; }
+        function getSender(id) { return db.users.find(u => u.id === id); }
+        function isImageFile(ft) { return ft && ft.startsWith('image/'); }
+        function scrollToBottom() { nextTick(() => { const el = document.querySelector('#messages-container'); if(el) el.scrollTop = el.scrollHeight; }); }
 
-        function getInitials(login) {
-          return login.substring(0,2).toUpperCase();
-        }
-
-        function openProfile() {
-          editingPresence.value = currentUser.value.presence || 'online';
-          showProfileModal.value = true;
-        }
-
-        function saveProfile() {
-          const userInDb = db.users.find(u => u.id === currentUser.value.id);
-          if (userInDb) {
-            userInDb.presence = editingPresence.value;
-            currentUser.value.presence = editingPresence.value;
-          }
-          showProfileModal.value = false;
-        }
-
-        function handleAvatarUpload(event) {
-          const file = event.target.files[0];
-          if (!file) return;
-          if (file.size > 500 * 1024) {
-            alert('Imagem muito grande. Máximo 500KB.');
-            return;
-          }
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            const base64 = e.target.result;
-            const userInDb = db.users.find(u => u.id === currentUser.value.id);
-            if (userInDb) {
-              userInDb.avatar = base64;
-              currentUser.value.avatar = base64;
-            }
-          };
-          reader.readAsDataURL(file);
-        }
-
-        // ========== CONTROLE DE LEITURA ==========
+        // Controle de leitura
         function getLastReadTimestamp(chatType, chatId) {
           if (!currentUser.value) return 0;
           const userId = currentUser.value.id;
           if (!db.lastRead[userId]) db.lastRead[userId] = { private: {}, group: {} };
-          const category = chatType === 'private' ? 'private' : 'group';
-          return db.lastRead[userId][category][chatId] || 0;
+          return db.lastRead[userId][chatType === 'private' ? 'private' : 'group'][chatId] || 0;
         }
-
         function setLastReadNow(chatType, chatId) {
           if (!currentUser.value) return;
           const userId = currentUser.value.id;
           if (!db.lastRead[userId]) db.lastRead[userId] = { private: {}, group: {} };
-          const category = chatType === 'private' ? 'private' : 'group';
-          db.lastRead[userId][category][chatId] = Date.now();
+          db.lastRead[userId][chatType === 'private' ? 'private' : 'group'][chatId] = Date.now();
         }
-
         function unreadCount(chatType, chatId) {
           if (!currentUser.value) return 0;
           const lastRead = getLastReadTimestamp(chatType, chatId);
-          let messages = [];
-          if (chatType === 'private') {
-            messages = db.messages.filter(m => m.conversationId === chatId && m.senderId !== currentUser.value.id);
-          } else {
-            messages = db.messages.filter(m => m.groupId === chatId && m.senderId !== currentUser.value.id);
-          }
-          return messages.filter(m => m.createdAt > lastRead).length;
+          let msgs = [];
+          if (chatType === 'private') msgs = db.messages.filter(m => m.conversationId === chatId && m.senderId !== currentUser.value.id);
+          else msgs = db.messages.filter(m => m.groupId === chatId && m.senderId !== currentUser.value.id);
+          return msgs.filter(m => m.createdAt > lastRead).length;
         }
+        function markAsRead(chatType, chatId) { setLastReadNow(chatType, chatId); }
 
-        function markAsRead(chatType, chatId) {
-          setLastReadNow(chatType, chatId);
-        }
-
-        // ========== TROCA DE SENHA ==========
-        function changePassword() {
-          erroSenha.value = '';
-          if (!newPassword1.value || newPassword1.value.length < 4) {
-            erroSenha.value = 'A senha deve ter pelo menos 4 caracteres.';
-            return;
-          }
-          if (newPassword1.value !== newPassword2.value) {
-            erroSenha.value = 'As senhas não coincidem.';
-            return;
-          }
-          if (currentUser.value && newPassword1.value === currentUser.value.password) {
-            erroSenha.value = 'A nova senha deve ser diferente da senha temporária.';
-            return;
-          }
-
-          const userInDb = db.users.find(u => u.id === currentUser.value.id);
-          if (userInDb) {
-            userInDb.password = newPassword1.value;
-            userInDb.passwordChanged = true;
-          }
-          currentUser.value.password = newPassword1.value;
-          currentUser.value.passwordChanged = true;
-          
-          forcePasswordChange.value = false;
-          newPassword1.value = '';
-          newPassword2.value = '';
-        }
-
-        // ========== AUTENTICAÇÃO ==========
+        // Autenticação
         function login() {
           erroLogin.value = '';
           const user = db.users.find(u => u.login === loginInput.value && u.password === senhaInput.value);
-          if (!user) {
-            erroLogin.value = 'Credenciais inválidas.';
-            return;
-          }
-          if (user.status !== 'active') {
-            erroLogin.value = 'Usuário não aprovado. Aguarde o administrador.';
-            return;
-          }
-          
+          if (!user) { erroLogin.value = 'Credenciais inválidas.'; return; }
+          if (user.status !== 'active') { erroLogin.value = 'Usuário não aprovado.'; return; }
           currentUser.value = { ...user };
-          loginInput.value = '';
-          senhaInput.value = '';
-          
-          if (!user.passwordChanged) {
-            forcePasswordChange.value = true;
-          } else {
-            forcePasswordChange.value = false;
-            if (user.role === 'admin') showAdminPanel.value = false;
-          }
-          
-          if (!db.lastRead[user.id]) {
-            db.lastRead[user.id] = { private: {}, group: {} };
-          }
+          loginInput.value = senhaInput.value = '';
+          if (!user.passwordChanged) forcePasswordChange.value = true;
+          else { forcePasswordChange.value = false; if (user.role === 'admin') showAdminPanel.value = false; }
+          if (!db.lastRead[user.id]) db.lastRead[user.id] = { private: {}, group: {} };
         }
-
         function logout() {
           currentUser.value = null;
-          activeChat.id = null;
-          activeChat.type = null;
-          activeChat.name = '';
-          showAdminPanel.value = false;
-          forcePasswordChange.value = false;
+          activeChat.id = activeChat.type = null; activeChat.name = '';
+          showAdminPanel.value = forcePasswordChange.value = false;
         }
 
-        // ========== ADMIN ==========
+        // Senha
+        function changePassword() {
+          erroSenha.value = '';
+          if (!newPassword1.value || newPassword1.value.length < 4) { erroSenha.value = 'Senha muito curta.'; return; }
+          if (newPassword1.value !== newPassword2.value) { erroSenha.value = 'Senhas não coincidem.'; return; }
+          if (currentUser.value && newPassword1.value === currentUser.value.password) { erroSenha.value = 'Senha igual à temporária.'; return; }
+          const userInDb = db.users.find(u => u.id === currentUser.value.id);
+          if (userInDb) { userInDb.password = newPassword1.value; userInDb.passwordChanged = true; }
+          currentUser.value.password = newPassword1.value;
+          currentUser.value.passwordChanged = true;
+          forcePasswordChange.value = false;
+          newPassword1.value = newPassword2.value = '';
+        }
+
+        // Perfil
+        function openProfile() { editingPresence.value = currentUser.value.presence || 'online'; showProfileModal.value = true; }
+        function saveProfile() {
+          const u = db.users.find(u => u.id === currentUser.value.id);
+          if (u) { u.presence = editingPresence.value; currentUser.value.presence = editingPresence.value; }
+          showProfileModal.value = false;
+        }
+        function handleAvatarUpload(e) {
+          const file = e.target.files[0]; if (!file) return;
+          if (file.size > 500*1024) { alert('Máximo 500KB'); return; }
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            const u = db.users.find(u => u.id === currentUser.value.id);
+            if (u) { u.avatar = ev.target.result; currentUser.value.avatar = ev.target.result; }
+          };
+          reader.readAsDataURL(file);
+        }
+
+        // Admin
         function generateCredentials() {
-          const adj = ['azul', 'feliz', 'rapido', 'sabio', 'forte', 'leve'];
-          const sub = ['gato', 'tigre', 'lobo', 'panda', 'raposa', 'coruja'];
+          const adj = ['azul','feliz','rapido','sabio','forte','leve'];
+          const sub = ['gato','tigre','lobo','panda','raposa','coruja'];
           newUserName.value = `${adj[Math.floor(Math.random()*6)]}.${sub[Math.floor(Math.random()*6)]}${Math.floor(Math.random()*100)}`;
           newUserPass.value = `${adj[Math.floor(Math.random()*6)]}${Math.floor(Math.random()*100)}`;
         }
-
         function createUser() {
           if (!newUserName.value || !newUserPass.value) return;
-          if (db.users.find(u => u.login === newUserName.value)) {
-            alert('Login já existe.');
-            return;
-          }
-          const newUser = {
-            id: genId(),
-            login: newUserName.value,
-            password: newUserPass.value,
-            role: 'user',
-            status: newUserAutoApprove.value ? 'active' : 'pending',
-            hidden: false,
-            createdBy: currentUser.value.id,
-            approvedBy: newUserAutoApprove.value ? currentUser.value.id : null,
-            createdAt: Date.now(),
-            passwordChanged: false,
-            presence: 'online',
-            avatar: null
-          };
-          db.users.push(newUser);
-          newUserName.value = '';
-          newUserPass.value = '';
-          showNewUserModal.value = false;
-        }
-
-        function approveUser(userId) {
-          const user = db.users.find(u => u.id === userId);
-          if (user) {
-            user.status = 'active';
-            user.approvedBy = currentUser.value.id;
-          }
-        }
-
-        function toggleHidden(userId) {
-          const user = db.users.find(u => u.id === userId);
-          if (user && user.role !== 'admin') {
-            user.hidden = !user.hidden;
-          }
-        }
-
-        function toggleBlock(userId) {
-          const user = db.users.find(u => u.id === userId);
-          if (user && user.role !== 'admin') {
-            user.status = user.status === 'blocked' ? 'pending' : 'blocked';
-          }
-        }
-
-        function deleteUser(userId) {
-          const user = db.users.find(u => u.id === userId);
-          if (!user || user.role === 'admin') {
-            alert('Não é possível excluir um administrador.');
-            return;
-          }
-          if (!confirm(`Tem certeza que deseja excluir o usuário "${user.login}"?`)) return;
-
-          db.users = db.users.filter(u => u.id !== userId);
-          db.conversations = db.conversations.filter(c => c.user1 !== userId && c.user2 !== userId);
-          db.groupMembers = db.groupMembers.filter(m => m.userId !== userId);
-          db.messages = db.messages.filter(m => m.senderId !== userId);
-
-          if (activeChat.type === 'private') {
-            const conv = db.conversations.find(c => c.id === activeChat.id);
-            if (conv) {
-              const otherId = conv.user1 === currentUser.value.id ? conv.user2 : conv.user1;
-              if (otherId === userId) {
-                activeChat.id = null; activeChat.type = null; activeChat.name = '';
-              }
-            }
-          }
-          delete db.lastRead[userId];
-        }
-
-        function deleteConversation(convId) {
-          if (!confirm('Apagar esta conversa e todas as mensagens?')) return;
-          db.conversations = db.conversations.filter(c => c.id !== convId);
-          db.messages = db.messages.filter(m => m.conversationId !== convId);
-          Object.keys(db.lastRead).forEach(uid => {
-            if (db.lastRead[uid].private[convId]) delete db.lastRead[uid].private[convId];
+          if (db.users.find(u => u.login === newUserName.value)) { alert('Login já existe.'); return; }
+          db.users.push({
+            id: genId(), login: newUserName.value, password: newUserPass.value, role: 'user',
+            status: newUserAutoApprove.value ? 'active' : 'pending', hidden: false, createdBy: currentUser.value.id,
+            approvedBy: newUserAutoApprove.value ? currentUser.value.id : null, createdAt: Date.now(),
+            passwordChanged: false, presence: 'online', avatar: null
           });
-          if (activeChat.type === 'private' && activeChat.id === convId) {
-            activeChat.id = null; activeChat.type = null; activeChat.name = '';
-          }
+          newUserName.value = newUserPass.value = ''; showNewUserModal.value = false;
         }
-
-        function deleteGroup(groupId) {
-          if (!confirm('Excluir este grupo e todas as mensagens?')) return;
-          db.groups = db.groups.filter(g => g.id !== groupId);
-          db.groupMembers = db.groupMembers.filter(m => m.groupId !== groupId);
-          db.messages = db.messages.filter(m => m.groupId !== groupId);
-          Object.keys(db.lastRead).forEach(uid => {
-            if (db.lastRead[uid].group[groupId]) delete db.lastRead[uid].group[groupId];
-          });
-          if (activeChat.type === 'group' && activeChat.id === groupId) {
-            activeChat.id = null; activeChat.type = null; activeChat.name = '';
-          }
+        function approveUser(id) { const u = db.users.find(u => u.id === id); if (u) { u.status = 'active'; u.approvedBy = currentUser.value.id; } }
+        function toggleHidden(id) { const u = db.users.find(u => u.id === id); if (u && u.role !== 'admin') u.hidden = !u.hidden; }
+        function toggleBlock(id) { const u = db.users.find(u => u.id === id); if (u && u.role !== 'admin') u.status = u.status === 'blocked' ? 'pending' : 'blocked'; }
+        function deleteUser(id) {
+          const u = db.users.find(u => u.id === id);
+          if (!u || u.role === 'admin') { alert('Não pode excluir admin.'); return; }
+          if (!confirm(`Excluir ${u.login}?`)) return;
+          db.users = db.users.filter(u => u.id !== id);
+          db.conversations = db.conversations.filter(c => c.user1 !== id && c.user2 !== id);
+          db.groupMembers = db.groupMembers.filter(m => m.userId !== id);
+          db.messages = db.messages.filter(m => m.senderId !== id);
+          if (activeChat.type === 'private') { const conv = db.conversations.find(c => c.id === activeChat.id); if (conv && (conv.user1 === id || conv.user2 === id)) { activeChat.id = activeChat.type = null; activeChat.name = ''; } }
+          delete db.lastRead[id];
         }
-
+        function deleteConversation(cid) {
+          if (!confirm('Apagar conversa?')) return;
+          db.conversations = db.conversations.filter(c => c.id !== cid);
+          db.messages = db.messages.filter(m => m.conversationId !== cid);
+          Object.keys(db.lastRead).forEach(uid => { if (db.lastRead[uid].private[cid]) delete db.lastRead[uid].private[cid]; });
+          if (activeChat.type === 'private' && activeChat.id === cid) { activeChat.id = activeChat.type = null; activeChat.name = ''; }
+        }
+        function deleteGroup(gid) {
+          if (!confirm('Excluir grupo?')) return;
+          db.groups = db.groups.filter(g => g.id !== gid);
+          db.groupMembers = db.groupMembers.filter(m => m.groupId !== gid);
+          db.messages = db.messages.filter(m => m.groupId !== gid);
+          Object.keys(db.lastRead).forEach(uid => { if (db.lastRead[uid].group[gid]) delete db.lastRead[uid].group[gid]; });
+          if (activeChat.type === 'group' && activeChat.id === gid) { activeChat.id = activeChat.type = null; activeChat.name = ''; }
+        }
         function createGroup() {
           if (!newGroupName.value || selectedGroupMembers.value.length === 0) return;
-          const groupId = genId();
-          db.groups.push({
-            id: groupId, name: newGroupName.value,
-            createdBy: currentUser.value.id, createdAt: Date.now()
-          });
-          [...selectedGroupMembers.value, currentUser.value.id].forEach(userId => {
-            db.groupMembers.push({ groupId, userId });
-          });
-          newGroupName.value = '';
-          selectedGroupMembers.value = [];
-          showNewGroupModal.value = false;
+          const gid = genId();
+          db.groups.push({ id: gid, name: newGroupName.value, createdBy: currentUser.value.id, createdAt: Date.now() });
+          [...selectedGroupMembers.value, currentUser.value.id].forEach(uid => db.groupMembers.push({ groupId: gid, userId: uid }));
+          newGroupName.value = ''; selectedGroupMembers.value = []; showNewGroupModal.value = false;
         }
 
-        // ========== ENVIO DE ARQUIVOS ==========
-        function triggerFileUpload() {
-          fileInput.value.click();
-        }
-
-        function handleFileUpload(event) {
-          const file = event.target.files[0];
-          if (!file) return;
-          if (file.size > MAX_FILE_SIZE) {
-            alert('Arquivo muito grande. Máximo de 2MB.');
-            return;
-          }
-
+        // Envio de arquivos
+        function triggerFileUpload() { fileInput.value.click(); }
+        function handleFileUpload(e) {
+          const file = e.target.files[0]; if (!file) return;
+          if (file.size > MAX_FILE_SIZE) { alert('Máximo 2MB'); return; }
           const reader = new FileReader();
-          reader.onload = (e) => {
-            const base64 = e.target.result;
-            sendFileMessage(base64, file.name, file.type);
-          };
+          reader.onload = (ev) => { sendFileMessage(ev.target.result, file.name, file.type); };
           reader.readAsDataURL(file);
-          event.target.value = '';
+          e.target.value = '';
         }
-
-        function sendFileMessage(dataUrl, fileName, fileType) {
+        function sendFileMessage(dataUrl, name, type) {
           if (!activeChat.id) return;
-
-          const msg = {
-            id: genId(),
-            senderId: currentUser.value.id,
-            text: '',
-            file: { name: fileName, type: fileType, data: dataUrl },
-            createdAt: Date.now()
-          };
-
+          const msg = { id: genId(), senderId: currentUser.value.id, text: '', file: { name, type, data: dataUrl }, createdAt: Date.now() };
           if (activeChat.type === 'private') msg.conversationId = activeChat.id;
           else msg.groupId = activeChat.id;
-
           db.messages.push(msg);
           markAsRead(activeChat.type, activeChat.id);
           scrollToBottom();
         }
 
-        // ========== CHAT ==========
+        // Chat
         function selectPrivateChat(userId) {
-          let conv = db.conversations.find(c => 
-            (c.user1 === currentUser.value.id && c.user2 === userId) ||
-            (c.user1 === userId && c.user2 === currentUser.value.id)
-          );
+          if (!userId) return;
+          let conv = db.conversations.find(c => (c.user1 === currentUser.value.id && c.user2 === userId) || (c.user1 === userId && c.user2 === currentUser.value.id));
           if (!conv) {
             conv = { id: genId(), user1: currentUser.value.id, user2: userId };
             db.conversations.push(conv);
@@ -539,77 +294,36 @@
           activeChat.id = conv.id;
           activeChat.name = other.login;
           markAsRead('private', conv.id);
+          novaConversaId.value = '';   // limpa select
           scrollToBottom();
         }
-
         function selectGroupChat(groupId) {
-          const group = db.groups.find(g => g.id === groupId);
-          if (!group) return;
+          const g = db.groups.find(g => g.id === groupId);
+          if (!g) return;
           activeChat.type = 'group';
           activeChat.id = groupId;
-          activeChat.name = group.name;
+          activeChat.name = g.name;
           markAsRead('group', groupId);
           scrollToBottom();
         }
-
         function sendMessage() {
           if (!newMessage.value.trim() || !activeChat.id) return;
-          const msg = {
-            id: genId(),
-            senderId: currentUser.value.id,
-            text: newMessage.value.trim(),
-            createdAt: Date.now()
-          };
+          const msg = { id: genId(), senderId: currentUser.value.id, text: newMessage.value.trim(), createdAt: Date.now() };
           if (activeChat.type === 'private') msg.conversationId = activeChat.id;
           else msg.groupId = activeChat.id;
-          
           db.messages.push(msg);
           newMessage.value = '';
           markAsRead(activeChat.type, activeChat.id);
           scrollToBottom();
         }
 
-        function scrollToBottom() {
-          nextTick(() => {
-            const el = document.querySelector('#messages-container');
-            if (el) el.scrollTop = el.scrollHeight;
-          });
-        }
-
-        function getSenderName(senderId) {
-          const u = db.users.find(u => u.id === senderId);
-          return u ? u.login : 'Desconhecido';
-        }
-
-        function getSender(senderId) {
-          return db.users.find(u => u.id === senderId);
-        }
-
-        function isImageFile(fileType) {
-          return fileType && fileType.startsWith('image/');
-        }
-
-        function downloadFile(dataUrl, fileName) {
-          const link = document.createElement('a');
-          link.href = dataUrl;
-          link.download = fileName;
-          link.click();
-        }
-
-        function formatLastMessageTime(timestamp) {
-          if (!timestamp) return '';
-          const date = new Date(timestamp);
-          return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        }
-
-        onMounted(() => {});
+        function downloadFile(url, name) { const a = document.createElement('a'); a.href = url; a.download = name; a.click(); }
 
         return {
-          db, currentUser, loginInput, senhaInput, erroLogin,
-          forcePasswordChange, newPassword1, newPassword2, erroSenha, changePassword,
+          db, currentUser, loginInput, senhaInput, erroLogin, forcePasswordChange, newPassword1, newPassword2, erroSenha, changePassword,
           showAdminPanel, showNewUserModal, showNewGroupModal, showProfileModal,
           newUserName, newUserPass, newUserAutoApprove, newGroupName, selectedGroupMembers,
-          activeChat, newMessage, fileInput, searchQuery,
+          activeChat, newMessage, fileInput, searchQuery, novaConversaId,     // <-- novaConversaId adicionado
           visibleUsers, myPrivateChats, myGroups, activeMessages, adminUserList,
           login, logout, generateCredentials, createUser, approveUser, toggleHidden, toggleBlock,
           deleteUser, deleteConversation, deleteGroup, createGroup,
@@ -622,7 +336,7 @@
       },
       template: `
         <div class="h-full w-full flex">
-          <!-- Tela de Login -->
+          <!-- Login -->
           <div v-if="!currentUser" class="flex items-center justify-center h-full w-full p-4 bg-whatsapp-chat">
             <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-md">
               <div class="text-center mb-6">
@@ -631,250 +345,167 @@
                 <p class="text-gray-500 text-sm">Comunicação simples e segura</p>
               </div>
               <form @submit.prevent="login">
-                <input v-model="loginInput" type="text" placeholder="Login" class="w-full p-3 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
-                <input v-model="senhaInput" type="password" placeholder="Senha" class="w-full p-3 mb-6 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
-                <button type="submit" class="w-full bg-whatsapp-green hover:bg-green-600 text-white py-3 rounded-lg font-semibold text-lg transition shadow-md">Entrar</button>
+                <input v-model="loginInput" type="text" placeholder="Login" class="w-full p-3 mb-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                <input v-model="senhaInput" type="password" placeholder="Senha" class="w-full p-3 mb-6 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                <button type="submit" class="w-full bg-whatsapp-green hover:bg-green-600 text-white py-3 rounded-lg font-semibold text-lg shadow-md">Entrar</button>
                 <p v-if="erroLogin" class="text-red-500 text-sm mt-3 text-center">{{ erroLogin }}</p>
               </form>
-              <div class="mt-4 text-xs text-gray-400 text-center">
-                Admin: admin / admin123
-              </div>
+              <div class="mt-4 text-xs text-gray-400 text-center">Admin: admin / admin123</div>
             </div>
           </div>
 
-          <!-- Tela de Troca de Senha Obrigatória -->
+          <!-- Troca de senha -->
           <div v-else-if="forcePasswordChange" class="flex items-center justify-center h-full w-full p-4 bg-whatsapp-chat">
             <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm">
               <h2 class="text-xl font-semibold mb-4 text-gray-800">🔐 Alterar Senha</h2>
               <p class="text-sm text-gray-500 mb-4">Primeiro acesso: defina sua senha pessoal</p>
               <form @submit.prevent="changePassword">
-                <input v-model="newPassword1" type="password" placeholder="Nova senha" class="w-full p-3 mb-3 border border-gray-300 rounded-lg">
-                <input v-model="newPassword2" type="password" placeholder="Confirme a nova senha" class="w-full p-3 mb-4 border border-gray-300 rounded-lg">
-                <button type="submit" class="w-full bg-whatsapp-green hover:bg-green-600 text-white py-3 rounded-lg font-semibold">Salvar nova senha</button>
-                <p v-if="erroSenha" class="text-red-500 text-sm mt-3 text-center">{{ erroSenha }}</p>
+                <input v-model="newPassword1" type="password" placeholder="Nova senha" class="w-full p-3 mb-3 border rounded-lg">
+                <input v-model="newPassword2" type="password" placeholder="Confirme" class="w-full p-3 mb-4 border rounded-lg">
+                <button type="submit" class="w-full bg-whatsapp-green text-white py-3 rounded-lg font-semibold">Salvar</button>
+                <p v-if="erroSenha" class="text-red-500 text-sm mt-3">{{ erroSenha }}</p>
               </form>
             </div>
           </div>
 
-          <!-- Interface Principal -->
+          <!-- App principal -->
           <div v-else class="flex w-full h-full bg-whatsapp-sidebar">
-            <!-- Sidebar (lista de conversas) -->
+            <!-- Sidebar -->
             <div class="w-full md:w-96 flex flex-col h-full border-r border-gray-700">
-              <!-- Cabeçalho do usuário -->
               <div class="bg-whatsapp-header p-3 flex justify-between items-center">
                 <div class="flex items-center gap-3 cursor-pointer" @click="openProfile">
                   <div class="relative">
-                    <div v-if="currentUser.avatar" class="w-10 h-10 rounded-full overflow-hidden">
-                      <img :src="currentUser.avatar" class="w-full h-full object-cover" />
-                    </div>
+                    <div v-if="currentUser.avatar" class="w-10 h-10 rounded-full overflow-hidden"><img :src="currentUser.avatar" class="w-full h-full object-cover" /></div>
                     <div v-else class="avatar-placeholder w-10 h-10 rounded-full text-sm">{{ getInitials(currentUser.login) }}</div>
                     <span class="absolute -bottom-0.5 -right-0.5 text-sm">{{ getPresenceDot(currentUser.presence) }}</span>
                   </div>
                   <span class="text-white font-medium">{{ currentUser.login }}</span>
                 </div>
                 <div class="flex gap-3 text-white">
-                  <button v-if="currentUser.role === 'admin'" @click="showAdminPanel = !showAdminPanel" class="hover:bg-white/10 p-1 rounded-full">
-                    <i class="fas fa-cog"></i>
-                  </button>
-                  <button @click="logout" class="hover:bg-white/10 p-1 rounded-full">
-                    <i class="fas fa-sign-out-alt"></i>
-                  </button>
+                  <button v-if="currentUser.role === 'admin'" @click="showAdminPanel = !showAdminPanel" class="hover:bg-white/10 p-1 rounded-full"><i class="fas fa-cog"></i></button>
+                  <button @click="logout" class="hover:bg-white/10 p-1 rounded-full"><i class="fas fa-sign-out-alt"></i></button>
                 </div>
               </div>
 
-              <!-- Painel Admin (expansível) -->
+              <!-- Admin panel -->
               <div v-if="showAdminPanel && currentUser.role === 'admin'" class="bg-gray-800 p-3 border-b border-gray-700 space-y-2">
-                <div class="flex justify-between items-center">
-                  <h3 class="text-white text-sm font-semibold">👥 Usuários</h3>
-                  <button @click="showNewUserModal = true" class="text-xs bg-whatsapp-green text-black px-3 py-1 rounded-full">+ Novo</button>
-                </div>
+                <div class="flex justify-between"><h3 class="text-white text-sm font-semibold">👥 Usuários</h3><button @click="showNewUserModal = true" class="text-xs bg-whatsapp-green text-black px-3 py-1 rounded-full">+ Novo</button></div>
                 <div class="max-h-32 overflow-y-auto text-sm space-y-1">
                   <div v-for="u in db.users" :key="u.id" class="flex items-center justify-between py-1 border-b border-gray-700">
-                    <div class="flex items-center gap-1 text-white">
-                      <span>{{ u.login }}</span>
-                      <span v-if="!u.passwordChanged" class="text-orange-300 text-xs" title="Senha temporária">⚠️</span>
-                    </div>
+                    <div class="flex items-center gap-1 text-white"><span>{{ u.login }}</span><span v-if="!u.passwordChanged" class="text-orange-300 text-xs">⚠️</span></div>
                     <div class="flex gap-1">
-                      <button v-if="u.status === 'pending'" @click="approveUser(u.id)" class="text-green-400 text-xs">✓</button>
+                      <button v-if="u.status==='pending'" @click="approveUser(u.id)" class="text-green-400 text-xs">✓</button>
                       <button @click="toggleHidden(u.id)" class="text-gray-400 text-xs">{{ u.hidden ? '👁' : '👻' }}</button>
-                      <button v-if="u.role !== 'admin'" @click="deleteUser(u.id)" class="text-red-400 text-xs">🗑️</button>
+                      <button v-if="u.role!=='admin'" @click="deleteUser(u.id)" class="text-red-400 text-xs">🗑️</button>
                     </div>
                   </div>
                 </div>
                 <button @click="showNewGroupModal = true" class="text-xs bg-whatsapp-green text-black px-3 py-1 rounded-full">➕ Novo grupo</button>
               </div>
 
-              <!-- Pesquisa -->
-              <div class="p-2">
-                <input v-model="searchQuery" type="text" placeholder="Pesquisar conversa" class="search-input w-full">
+              <div class="p-2"><input v-model="searchQuery" type="text" placeholder="Pesquisar conversa" class="search-input w-full"></div>
+
+              <div class="p-2 border-b border-gray-700">
+                <select v-model="novaConversaId" @change="selectPrivateChat(novaConversaId)" class="w-full p-2 bg-gray-700 text-white rounded-lg">
+                  <option value="">➕ Nova conversa privada...</option>
+                  <option v-for="u in visibleUsers" :key="u.id" :value="u.id">{{ u.login }}</option>
+                </select>
               </div>
 
-              <!-- Lista de conversas -->
               <div class="flex-1 overflow-y-auto scroll-suave">
                 <div v-for="chat in myPrivateChats" :key="chat.id" @click="selectPrivateChat(chat.other.id)" class="flex items-center p-3 hover:bg-gray-800 cursor-pointer border-b border-gray-700">
                   <div class="relative mr-3">
-                    <div v-if="chat.other.avatar" class="w-12 h-12 rounded-full overflow-hidden">
-                      <img :src="chat.other.avatar" class="w-full h-full object-cover" />
-                    </div>
+                    <div v-if="chat.other.avatar" class="w-12 h-12 rounded-full overflow-hidden"><img :src="chat.other.avatar" class="w-full h-full object-cover" /></div>
                     <div v-else class="avatar-placeholder w-12 h-12 rounded-full">{{ getInitials(chat.other.login) }}</div>
                     <span class="absolute -bottom-0.5 -right-0.5 text-xs">{{ getPresenceDot(chat.other.presence) }}</span>
                   </div>
                   <div class="flex-1 min-w-0">
-                    <div class="flex justify-between items-center">
-                      <span class="text-white font-medium truncate">{{ chat.other.login }}</span>
-                      <span class="text-xs text-gray-400">{{ chat.lastMsg ? formatLastMessageTime(chat.lastMsg.createdAt) : '' }}</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                      <span class="text-sm text-gray-400 truncate">{{ chat.lastMsg ? (chat.lastMsg.text || '📎 Arquivo') : 'Nenhuma mensagem' }}</span>
-                      <span v-if="unreadCount('private', chat.id) > 0" class="badge-unread">{{ unreadCount('private', chat.id) }}</span>
-                    </div>
+                    <div class="flex justify-between"><span class="text-white font-medium truncate">{{ chat.other.login }}</span><span class="text-xs text-gray-400">{{ chat.lastMsg ? formatLastMessageTime(chat.lastMsg.createdAt) : '' }}</span></div>
+                    <div class="flex justify-between"><span class="text-sm text-gray-400 truncate">{{ chat.lastMsg ? (chat.lastMsg.text || '📎 Arquivo') : 'Nenhuma mensagem' }}</span><span v-if="unreadCount('private', chat.id) > 0" class="badge-unread">{{ unreadCount('private', chat.id) }}</span></div>
                   </div>
                 </div>
-                <!-- Grupos -->
                 <div v-for="group in myGroups" :key="group.id" @click="selectGroupChat(group.id)" class="flex items-center p-3 hover:bg-gray-800 cursor-pointer border-b border-gray-700">
-                  <div class="w-12 h-12 rounded-full bg-gray-600 flex items-center justify-center mr-3">
-                    <i class="fas fa-users text-white"></i>
-                  </div>
-                  <div class="flex-1">
-                    <div class="flex justify-between">
-                      <span class="text-white font-medium">{{ group.name }}</span>
-                      <span v-if="unreadCount('group', group.id) > 0" class="badge-unread">{{ unreadCount('group', group.id) }}</span>
-                    </div>
-                  </div>
+                  <div class="w-12 h-12 rounded-full bg-gray-600 flex items-center justify-center mr-3"><i class="fas fa-users text-white"></i></div>
+                  <div class="flex-1"><div class="flex justify-between"><span class="text-white font-medium">{{ group.name }}</span><span v-if="unreadCount('group', group.id) > 0" class="badge-unread">{{ unreadCount('group', group.id) }}</span></div></div>
                 </div>
               </div>
             </div>
 
-            <!-- Área do Chat (ampliada) -->
+            <!-- Chat area -->
             <div class="flex-1 flex flex-col h-full bg-whatsapp-chat min-w-0">
-              <!-- Cabeçalho do chat ativo -->
               <div class="bg-whatsapp-header p-3 flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center text-white">
-                  <i v-if="activeChat.type === 'private'" class="fas fa-user"></i>
-                  <i v-else-if="activeChat.type === 'group'" class="fas fa-users"></i>
-                </div>
-                <div>
-                  <div class="text-white font-medium">{{ activeChat.name || 'ChatFacil' }}</div>
-                  <!-- removido "online" -->
-                </div>
+                <div class="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center text-white"><i v-if="activeChat.type==='private'" class="fas fa-user"></i><i v-else-if="activeChat.type==='group'" class="fas fa-users"></i></div>
+                <div class="text-white font-medium">{{ activeChat.name || 'ChatFacil' }}</div>
               </div>
 
-              <!-- Mensagens (container com altura flexível) -->
-              <div id="messages-container" class="chat-messages-container overflow-y-auto p-4 space-y-2 scroll-suave" style="background-image: url('https://web.whatsapp.com/img/bg-chat-tile-light_04fcacde539c58cca6745483d4858c52.png'); background-size: contain;">
+              <div id="messages-container" class="chat-messages-container overflow-y-auto p-4 space-y-2 scroll-suave" style="background-image:url('https://web.whatsapp.com/img/bg-chat-tile-light_04fcacde539c58cca6745483d4858c52.png'); background-size:contain;">
                 <div v-for="msg in activeMessages" :key="msg.id" class="flex gap-2" :class="{'flex-row-reverse': msg.senderId === currentUser.id}">
                   <div v-if="msg.senderId !== currentUser.id" class="flex-shrink-0">
-                    <div v-if="getSender(msg.senderId)?.avatar" class="w-8 h-8 rounded-full overflow-hidden">
-                      <img :src="getSender(msg.senderId).avatar" class="w-full h-full object-cover" />
-                    </div>
+                    <div v-if="getSender(msg.senderId)?.avatar" class="w-8 h-8 rounded-full overflow-hidden"><img :src="getSender(msg.senderId).avatar" class="w-full h-full object-cover" /></div>
                     <div v-else class="avatar-placeholder w-8 h-8 rounded-full text-xs">{{ getInitials(getSenderName(msg.senderId)) }}</div>
                   </div>
                   <div class="max-w-[75%]">
                     <div v-if="msg.senderId !== currentUser.id" class="text-xs text-gray-600 ml-1 mb-0.5">{{ getSenderName(msg.senderId) }}</div>
-                    
                     <div v-if="msg.text" class="p-2 text-sm shadow" :class="msg.senderId === currentUser.id ? 'msg-propria' : 'msg-outro'">{{ msg.text }}</div>
-                    
                     <div v-if="msg.file" class="mt-1">
-                      <div v-if="isImageFile(msg.file.type)" class="max-w-xs cursor-pointer" @click="downloadFile(msg.file.data, msg.file.name)">
-                        <img :src="msg.file.data" class="rounded-lg shadow" />
-                      </div>
-                      <div v-else class="bg-white p-3 rounded-lg shadow flex items-center gap-2">
-                        <i class="fas fa-file text-gray-500"></i>
-                        <span class="truncate">{{ msg.file.name }}</span>
-                        <button @click="downloadFile(msg.file.data, msg.file.name)" class="text-blue-500 text-sm"><i class="fas fa-download"></i></button>
-                      </div>
+                      <div v-if="isImageFile(msg.file.type)" class="max-w-xs cursor-pointer" @click="downloadFile(msg.file.data, msg.file.name)"><img :src="msg.file.data" class="rounded-lg shadow" /></div>
+                      <div v-else class="bg-white p-3 rounded-lg shadow flex items-center gap-2"><i class="fas fa-file text-gray-500"></i><span class="truncate">{{ msg.file.name }}</span><button @click="downloadFile(msg.file.data, msg.file.name)" class="text-blue-500"><i class="fas fa-download"></i></button></div>
                     </div>
-
                     <div class="text-xs text-gray-500 mt-1 text-right">{{ new Date(msg.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) }}</div>
                   </div>
                 </div>
               </div>
-              
-              <!-- Barra de envio (mais compacta) -->
+
               <div v-if="activeChat.id" class="bg-gray-100 p-2 flex items-center gap-2">
-                <button @click="triggerFileUpload" class="text-gray-600 hover:text-gray-800 p-2"><i class="fas fa-paperclip"></i></button>
-                <input v-model="newMessage" type="text" placeholder="Mensagem" class="flex-1 p-2 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500" @keyup.enter="sendMessage">
+                <button @click="triggerFileUpload" class="text-gray-600 p-2"><i class="fas fa-paperclip"></i></button>
+                <input v-model="newMessage" @keyup.enter="sendMessage" type="text" placeholder="Mensagem" class="flex-1 p-2 rounded-full border focus:ring-2 focus:ring-green-500">
                 <button @click="sendMessage" class="text-whatsapp-green p-2"><i class="fas fa-paper-plane"></i></button>
                 <input type="file" ref="fileInput" class="hidden" @change="handleFileUpload">
               </div>
-              <div v-else class="bg-gray-100 p-2 text-center text-gray-500 text-sm">
-                Selecione uma conversa para começar
-              </div>
+              <div v-else class="bg-gray-100 p-2 text-center text-gray-500 text-sm">Selecione uma conversa</div>
             </div>
           </div>
 
-          <!-- Modal de Perfil -->
+          <!-- Modals -->
           <div v-if="showProfileModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" @click.self="showProfileModal = false">
             <div class="bg-white p-5 rounded-lg w-full max-w-sm">
-              <h2 class="text-lg font-bold mb-4 text-gray-800">Meu Perfil</h2>
+              <h2 class="text-lg font-bold mb-4">Perfil</h2>
               <div class="flex flex-col items-center mb-4">
                 <div class="relative mb-2">
-                  <div v-if="currentUser.avatar" class="w-20 h-20 rounded-full overflow-hidden">
-                    <img :src="currentUser.avatar" class="w-full h-full object-cover" />
-                  </div>
+                  <div v-if="currentUser.avatar" class="w-20 h-20 rounded-full overflow-hidden"><img :src="currentUser.avatar" class="w-full h-full object-cover" /></div>
                   <div v-else class="avatar-placeholder w-20 h-20 rounded-full text-2xl">{{ getInitials(currentUser.login) }}</div>
-                  <label class="absolute bottom-0 right-0 bg-gray-200 p-1 rounded-full cursor-pointer">
-                    <i class="fas fa-camera"></i>
-                    <input type="file" accept="image/*" class="hidden" @change="handleAvatarUpload" ref="avatarInput">
-                  </label>
+                  <label class="absolute bottom-0 right-0 bg-gray-200 p-1 rounded-full cursor-pointer"><i class="fas fa-camera"></i><input type="file" accept="image/*" class="hidden" @change="handleAvatarUpload" ref="avatarInput"></label>
                 </div>
               </div>
-              <div class="mb-4">
-                <label class="block text-sm mb-1 text-gray-700">Status</label>
-                <select v-model="editingPresence" class="w-full p-2 border rounded">
-                  <option value="online">🟢 Disponível</option>
-                  <option value="busy">🟡 Ocupado</option>
-                  <option value="away">🟠 Ausente</option>
-                  <option value="offline">🔴 Offline</option>
-                </select>
-              </div>
-              <div class="flex gap-2">
-                <button @click="saveProfile" class="flex-1 bg-whatsapp-green text-white py-2 rounded-lg">Salvar</button>
-                <button @click="showProfileModal = false" class="flex-1 bg-gray-300 py-2 rounded-lg">Cancelar</button>
-              </div>
+              <div class="mb-4"><label class="block text-sm mb-1">Status</label><select v-model="editingPresence" class="w-full p-2 border rounded"><option value="online">🟢 Disponível</option><option value="busy">🟡 Ocupado</option><option value="away">🟠 Ausente</option><option value="offline">🔴 Offline</option></select></div>
+              <div class="flex gap-2"><button @click="saveProfile" class="flex-1 bg-whatsapp-green text-white py-2 rounded-lg">Salvar</button><button @click="showProfileModal = false" class="flex-1 bg-gray-300 py-2 rounded-lg">Cancelar</button></div>
             </div>
           </div>
 
-          <!-- Modal Criar Usuário -->
           <div v-if="showNewUserModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" @click.self="showNewUserModal = false">
             <div class="bg-white p-5 rounded-lg w-full max-w-md">
-              <h2 class="text-lg font-bold mb-4 text-gray-800">Criar novo usuário</h2>
+              <h2 class="text-lg font-bold mb-4">Criar usuário</h2>
               <div class="space-y-3">
-                <input v-model="newUserName" type="text" placeholder="Login" class="w-full p-2 border rounded">
-                <input v-model="newUserPass" type="text" placeholder="Senha temporária" class="w-full p-2 border rounded">
-                <div class="flex items-center gap-2">
-                  <input type="checkbox" v-model="newUserAutoApprove" id="autoApprove" class="w-4 h-4">
-                  <label for="autoApprove" class="text-sm text-gray-700">Aprovar automaticamente</label>
-                </div>
-                <button @click="generateCredentials" class="text-sm text-blue-500">🎲 Gerar credenciais aleatórias</button>
+                <input v-model="newUserName" placeholder="Login" class="w-full p-2 border rounded">
+                <input v-model="newUserPass" placeholder="Senha temporária" class="w-full p-2 border rounded">
+                <div class="flex items-center gap-2"><input type="checkbox" v-model="newUserAutoApprove" id="auto"><label for="auto">Aprovar automaticamente</label></div>
+                <button @click="generateCredentials" class="text-sm text-blue-500">🎲 Gerar aleatório</button>
               </div>
-              <div class="flex gap-2 mt-5">
-                <button @click="createUser" class="flex-1 bg-whatsapp-green text-white py-2 rounded-lg">Criar</button>
-                <button @click="showNewUserModal = false" class="flex-1 bg-gray-300 py-2 rounded-lg">Cancelar</button>
-              </div>
+              <div class="flex gap-2 mt-5"><button @click="createUser" class="flex-1 bg-whatsapp-green text-white py-2 rounded-lg">Criar</button><button @click="showNewUserModal = false" class="flex-1 bg-gray-300 py-2 rounded-lg">Cancelar</button></div>
             </div>
           </div>
 
-          <!-- Modal Criar Grupo -->
           <div v-if="showNewGroupModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" @click.self="showNewGroupModal = false">
             <div class="bg-white p-5 rounded-lg w-full max-w-md">
-              <h2 class="text-lg font-bold mb-4 text-gray-800">Criar novo grupo</h2>
-              <input v-model="newGroupName" type="text" placeholder="Nome do grupo" class="w-full p-2 mb-3 border rounded">
-              <div class="max-h-52 overflow-y-auto border rounded p-2 mb-3">
-                <div v-for="u in adminUserList" :key="u.id" class="flex items-center gap-2 py-1">
-                  <input type="checkbox" :value="u.id" v-model="selectedGroupMembers" class="w-4 h-4">
-                  <span class="text-sm">{{ u.login }}</span>
-                </div>
-              </div>
-              <div class="flex gap-2">
-                <button @click="createGroup" class="flex-1 bg-whatsapp-green text-white py-2 rounded-lg">Criar</button>
-                <button @click="showNewGroupModal = false" class="flex-1 bg-gray-300 py-2 rounded-lg">Cancelar</button>
-              </div>
+              <h2 class="text-lg font-bold mb-4">Criar grupo</h2>
+              <input v-model="newGroupName" placeholder="Nome do grupo" class="w-full p-2 mb-3 border rounded">
+              <div class="max-h-52 overflow-y-auto border rounded p-2 mb-3"><div v-for="u in adminUserList" :key="u.id" class="flex items-center gap-2 py-1"><input type="checkbox" :value="u.id" v-model="selectedGroupMembers"><span>{{ u.login }}</span></div></div>
+              <div class="flex gap-2"><button @click="createGroup" class="flex-1 bg-whatsapp-green text-white py-2 rounded-lg">Criar</button><button @click="showNewGroupModal = false" class="flex-1 bg-gray-300 py-2 rounded-lg">Cancelar</button></div>
             </div>
           </div>
         </div>
       `
     });
-
     app.mount('#app');
   </script>
 </body>
