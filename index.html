@@ -13,7 +13,6 @@
     
     :root {
       --header: #075E54;
-      --header-dark: #054c44;
       --chat-bg: #e5ded8;
       --message-in: #ffffff;
       --message-out: #dcf8c6;
@@ -22,7 +21,6 @@
       --unread-badge: #25d366;
     }
     
-    /* Tela de conversas (mobile) */
     .conversas-container {
       background: white;
       height: 100vh;
@@ -72,7 +70,6 @@
       line-height: 1.4;
       word-wrap: break-word;
       box-shadow: 0 1px 0.5px rgba(0,0,0,0.1);
-      position: relative;
     }
     .msg-out {
       background: var(--message-out);
@@ -119,7 +116,6 @@
     }
     .chat-item:active { background: #f5f5f5; }
     
-    /* Input do chat (mobile) */
     .chat-footer {
       background: #f0f2f5;
       padding: 8px 12px;
@@ -137,10 +133,6 @@
       outline: none;
       font-size: 1rem;
     }
-    
-    /* Animações */
-    .slide-left-enter-active, .slide-left-leave-active { transition: transform 0.3s ease; }
-    .slide-left-enter-from, .slide-left-leave-to { transform: translateX(100%); }
   </style>
 </head>
 <body>
@@ -200,7 +192,6 @@
         const newGroupName = ref('');
         const selectedGroupMembers = ref([]);
         
-        // Mobile: controle de tela
         const activeChat = reactive({ type: null, id: null, name: '' });
         const showChatScreen = ref(false);
         
@@ -289,7 +280,7 @@
           currentUser.value = { ...user };
           loginInput.value = senhaInput.value = '';
           if (!user.passwordChanged) forcePasswordChange.value = true;
-          else { forcePasswordChange.value = false; if (user.role === 'admin') showAdminPanel.value = false; }
+          else { forcePasswordChange.value = false; }
           if (!db.lastRead[user.id]) db.lastRead[user.id] = { private: {}, group: {} };
         }
         function logout() {
@@ -497,9 +488,8 @@
             </div>
           </div>
 
-          <!-- Tela principal: Conversas (mobile) -->
+          <!-- Tela de Conversas (mobile) -->
           <div v-else-if="!showChatScreen" class="conversas-container">
-            <!-- Header -->
             <div class="header-green">
               <div class="flex items-center gap-3 flex-1 cursor-pointer" @click="openProfile">
                 <div v-if="currentUser.avatar" class="w-10 h-10 rounded-full overflow-hidden"><img :src="currentUser.avatar" class="w-full h-full object-cover" /></div>
@@ -512,7 +502,6 @@
               </div>
             </div>
             
-            <!-- Painel admin (expansível) -->
             <div v-if="showAdminPanel && currentUser.role === 'admin'" class="bg-gray-100 p-3 border-b border-gray-300">
               <div class="flex justify-between items-center mb-2">
                 <h3 class="font-semibold text-sm">👥 Usuários</h3>
@@ -531,12 +520,10 @@
               <button @click="showNewGroupModal = true" class="text-xs bg-[#25d366] text-black px-3 py-1 rounded-full w-full">➕ Novo grupo</button>
             </div>
 
-            <!-- Barra de pesquisa -->
             <div class="search-bar">
               <input v-model="searchQuery" type="text" placeholder="Pesquisar conversa" class="search-input-mobile">
             </div>
 
-            <!-- Lista de conversas -->
             <div class="flex-1 overflow-y-auto bg-white">
               <div v-for="chat in myPrivateChats" :key="chat.id" @click="selectPrivateChat(chat.other.id)" class="chat-item">
                 <div class="relative mr-3">
@@ -563,10 +550,8 @@
                   </div>
                 </div>
               </div>
-              <!-- Botão nova conversa (flutuante) -->
               <div class="fixed bottom-6 right-6">
-                <button @click="showNewUserModal = true" v-if="currentUser.role === 'admin'" class="w-14 h-14 bg-[#25d366] rounded-full shadow-lg flex items-center justify-center text-white text-2xl"><i class="fas fa-user-plus"></i></button>
-                <div v-else class="relative">
+                <div class="relative">
                   <select v-model="novaConversaId" @change="selectPrivateChat(novaConversaId)" class="absolute bottom-0 right-0 opacity-0 w-14 h-14">
                     <option value="">Nova conversa</option>
                     <option v-for="u in visibleUsers" :key="u.id" :value="u.id">{{ u.login }}</option>
@@ -579,7 +564,6 @@
 
           <!-- Tela de Chat (mobile) -->
           <div v-else class="chat-container">
-            <!-- Header do chat -->
             <div class="header-green">
               <button @click="closeChat" class="text-white mr-2"><i class="fas fa-arrow-left"></i></button>
               <div class="flex items-center gap-3 flex-1">
@@ -595,7 +579,6 @@
               <button class="text-white"><i class="fas fa-ellipsis-v"></i></button>
             </div>
 
-            <!-- Mensagens -->
             <div id="messages-container" class="flex-1 overflow-y-auto p-3 space-y-2" style="background-image: url('https://web.whatsapp.com/img/bg-chat-tile-light_04fcacde539c58cca6745483d4858c52.png'); background-size: contain;">
               <div v-for="msg in activeMessages" :key="msg.id" class="flex gap-2" :class="{'flex-row-reverse': msg.senderId === currentUser.id}">
                 <div v-if="msg.senderId !== currentUser.id" class="flex-shrink-0">
@@ -614,7 +597,6 @@
               </div>
             </div>
 
-            <!-- Rodapé de mensagem -->
             <div class="chat-footer">
               <button @click="triggerFileUpload" class="text-gray-600 p-2"><i class="fas fa-paperclip"></i></button>
               <input v-model="newMessage" @keyup.enter="sendMessage" type="text" placeholder="Mensagem">
@@ -623,7 +605,7 @@
             </div>
           </div>
 
-          <!-- Modals (mantidos) -->
+          <!-- Modals -->
           <div v-if="showProfileModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" @click.self="showProfileModal = false">
             <div class="bg-white p-5 rounded-lg w-full max-w-sm">
               <h2 class="text-lg font-bold mb-4">Perfil</h2>
