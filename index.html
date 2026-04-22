@@ -140,13 +140,23 @@
       outline: none;
       font-size: 1rem;
     }
+    
+    .error-message {
+      background: #fee;
+      color: #c00;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      margin-top: 12px;
+      border: 1px solid #fcc;
+    }
   </style>
 </head>
 <body>
   <div id="app"></div>
 
   <script>
-    const { createApp, ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } = Vue;
+    const { createApp, ref, reactive, computed, watch, nextTick, onUnmounted } = Vue;
 
     const STORAGE_KEY = 'chat_facil_db';
     const MAX_FILE_SIZE = 2 * 1024 * 1024;
@@ -184,9 +194,7 @@
         function handleStorageChange(e) {
           if (e.key === STORAGE_KEY) {
             const newDb = JSON.parse(e.newValue);
-            // Atualiza o objeto reativo sem perder a referência
             Object.assign(db, newDb);
-            // Se estiver em uma conversa, força atualização
             if (activeChat.id) {
               markAsRead(activeChat.type, activeChat.id);
             }
@@ -204,6 +212,7 @@
         const loginInput = ref('');
         const senhaInput = ref('');
         const erroLogin = ref('');
+        const loggingIn = ref(false);
         const forcePasswordChange = ref(false);
         const newPassword1 = ref('');
         const newPassword2 = ref('');
@@ -227,6 +236,9 @@
         const novaConversaId = ref('');
         const editingPresence = ref('online');
         const avatarInput = ref(null);
+
+        // Limpa erro ao digitar
+        watch([loginInput, senhaInput], () => { erroLogin.value = ''; });
 
         const visibleUsers = computed(() => {
           if (!currentUser.value) return [];
@@ -298,17 +310,35 @@
         }
         function markAsRead(chatType, chatId) { setLastReadNow(chatType, chatId); }
 
-        function login() {
+        async function login() {
           erroLogin.value = '';
+          loggingIn.value = true;
+          
+          // Pequeno delay para evitar travamento visual
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
           const user = db.users.find(u => u.login === loginInput.value && u.password === senhaInput.value);
-          if (!user) { erroLogin.value = 'Credenciais inválidas.'; return; }
-          if (user.status !== 'active') { erroLogin.value = 'Usuário não aprovado.'; return; }
+          if (!user) {
+            erroLogin.value = 'Credenciais inválidas. Verifique seu login e senha.';
+            loggingIn.value = false;
+            return;
+          }
+          if (user.status !== 'active') {
+            erroLogin.value = 'Usuário não aprovado. Aguarde o administrador.';
+            loggingIn.value = false;
+            return;
+          }
+          
           currentUser.value = { ...user };
-          loginInput.value = senhaInput.value = '';
+          loginInput.value = '';
+          senhaInput.value = '';
+          loggingIn.value = false;
+          
           if (!user.passwordChanged) forcePasswordChange.value = true;
           else { forcePasswordChange.value = false; }
           if (!db.lastRead[user.id]) db.lastRead[user.id] = { private: {}, group: {} };
         }
+        
         function logout() {
           currentUser.value = null;
           activeChat.id = activeChat.type = null; activeChat.name = '';
@@ -318,9 +348,9 @@
 
         function changePassword() {
           erroSenha.value = '';
-          if (!newPassword1.value || newPassword1.value.length < 4) { erroSenha.value = 'Senha muito curta.'; return; }
-          if (newPassword1.value !== newPassword2.value) { erroSenha.value = 'Senhas não coincidem.'; return; }
-          if (currentUser.value && newPassword1.value === currentUser.value.password) { erroSenha.value = 'Senha igual à temporária.'; return; }
+          if (!newPassword1.value || newPassword1.value.length < 4) { erroSenha.value = 'Senha muito curta (mínimo 4 caracteres).'; return; }
+          if (newPassword1.value !== newPassword2.value) { erroSenha.value = 'As senhas não coincidem.'; return; }
+          if (currentUser.value && newPassword1.value === currentUser.value.password) { erroSenha.value = 'A nova senha deve ser diferente da senha temporária.'; return; }
           const userInDb = db.users.find(u => u.id === currentUser.value.id);
           if (userInDb) { userInDb.password = newPassword1.value; userInDb.passwordChanged = true; }
           currentUser.value.password = newPassword1.value;
@@ -462,15 +492,12 @@
 
         function downloadFile(url, name) { const a = document.createElement('a'); a.href = url; a.download = name; a.click(); }
 
-        // Força atualização quando recebe mensagem de outra aba
         watch(() => db.messages.length, () => {
-          if (activeChat.id) {
-            scrollToBottom();
-          }
+          if (activeChat.id) scrollToBottom();
         });
 
         return {
-          db, currentUser, loginInput, senhaInput, erroLogin, forcePasswordChange, newPassword1, newPassword2, erroSenha, changePassword,
+          db, currentUser, loginInput, senhaInput, erroLogin, loggingIn, forcePasswordChange, newPassword1, newPassword2, erroSenha, changePassword,
           showAdminPanel, showNewUserModal, showNewGroupModal, showProfileModal,
           newUserName, newUserPass, newUserAutoApprove, newGroupName, selectedGroupMembers,
           activeChat, showChatScreen, closeChat,
@@ -498,10 +525,14 @@
                 <p class="text-gray-500 text-sm">Comunicação simples</p>
               </div>
               <form @submit.prevent="login">
-                <input v-model="loginInput" type="text" placeholder="Login" class="w-full p-3 mb-3 border border-gray-300 rounded-lg">
-                <input v-model="senhaInput" type="password" placeholder="Senha" class="w-full p-3 mb-6 border border-gray-300 rounded-lg">
-                <button type="submit" class="w-full bg-[#075E54] text-white py-3 rounded-lg font-medium">Entrar</button>
-                <p v-if="erroLogin" class="text-red-500 text-sm mt-3 text-center">{{ erroLogin }}</p>
+                <input v-model="loginInput" type="text" placeholder="Login" class="w-full p-3 mb-3 border border-gray-300 rounded-lg" :disabled="loggingIn">
+                <input v-model="senhaInput" type="password" placeholder="Senha" class="w-full p-3 mb-6 border border-gray-300 rounded-lg" :disabled="loggingIn">
+                <button type="submit" class="w-full bg-[#075E54] text-white py-3 rounded-lg font-medium disabled:opacity-50" :disabled="loggingIn">
+                  {{ loggingIn ? 'Entrando...' : 'Entrar' }}
+                </button>
+                <div v-if="erroLogin" class="error-message">
+                  <i class="fas fa-exclamation-circle mr-2"></i>{{ erroLogin }}
+                </div>
               </form>
               <p class="text-xs text-gray-400 text-center mt-4">Admin: admin / admin123</p>
             </div>
@@ -638,7 +669,7 @@
             </div>
           </div>
 
-          <!-- Modals (mantidos) -->
+          <!-- Modals -->
           <div v-if="showProfileModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" @click.self="showProfileModal = false">
             <div class="bg-white p-5 rounded-lg w-full max-w-sm">
               <h2 class="text-lg font-bold mb-4">Perfil</h2>
