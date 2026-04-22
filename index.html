@@ -1,11 +1,396 @@
-head>
+<!DOCTYPE html>
+<html lang="pt">
+<head>
   <meta charset="UTF-8">
-  <meta 
-      text-transform: uppercase;
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>ChatFacil</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <style>
+    * { -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, sans-serif; }
+    
+    :root {
+      --header: #075E54;
+      --header-dark: #054c44;
+      --chat-bg: #e5ded8;
+      --message-in: #ffffff;
+      --message-out: #dcf8c6;
+      --text-dark: #303030;
+      --text-secondary: #667781;
+      --unread-badge: #25d366;
     }
     
-    /* Balões de mensagem */
-    .msg-
+    /* Tela de conversas (mobile) */
+    .conversas-container {
+      background: white;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .chat-container {
+      background: var(--chat-bg);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 20;
+    }
+    
+    .header-green {
+      background: var(--header);
+      color: white;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 56px;
+    }
+    
+    .avatar-placeholder {
+      background: #b9b9b9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 500;
+      text-transform: uppercase;
+      border-radius: 50%;
+    }
+    
+    .msg-bubble {
+      max-width: 75%;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      line-height: 1.4;
+      word-wrap: break-word;
+      box-shadow: 0 1px 0.5px rgba(0,0,0,0.1);
+      position: relative;
+    }
+    .msg-out {
+      background: var(--message-out);
+      color: var(--text-dark);
+      border-top-right-radius: 0;
+    }
+    .msg-in {
+      background: var(--message-in);
+      color: var(--text-dark);
+      border-top-left-radius: 0;
+    }
+    
+    .badge-unread {
+      background: var(--unread-badge);
+      color: white;
+      border-radius: 999px;
+      padding: 2px 7px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      min-width: 20px;
+      text-align: center;
+    }
+    
+    .search-bar {
+      background: #f6f6f6;
+      padding: 8px 12px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .search-input-mobile {
+      background: white;
+      border-radius: 20px;
+      padding: 8px 16px;
+      border: 1px solid #ddd;
+      width: 100%;
+      font-size: 0.9rem;
+    }
+    
+    .chat-item {
+      display: flex;
+      padding: 12px 16px;
+      border-bottom: 1px solid #f0f0f0;
+      background: white;
+      cursor: pointer;
+    }
+    .chat-item:active { background: #f5f5f5; }
+    
+    /* Input do chat (mobile) */
+    .chat-footer {
+      background: #f0f2f5;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-top: 1px solid #e0e0e0;
+    }
+    .chat-footer input {
+      flex: 1;
+      border: none;
+      border-radius: 24px;
+      padding: 10px 16px;
+      background: white;
+      outline: none;
+      font-size: 1rem;
+    }
+    
+    /* Animações */
+    .slide-left-enter-active, .slide-left-leave-active { transition: transform 0.3s ease; }
+    .slide-left-enter-from, .slide-left-leave-to { transform: translateX(100%); }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script>
+    const { createApp, ref, reactive, computed, watch, nextTick } = Vue;
+
+    const STORAGE_KEY = 'chat_facil_db';
+    const MAX_FILE_SIZE = 2 * 1024 * 1024;
+
+    const defaultDB = {
+      users: [
+        { id: 'admin1', login: 'admin', password: 'admin123', role: 'admin', status: 'active', hidden: false, createdBy: null, approvedBy: null, createdAt: Date.now(), passwordChanged: true, presence: 'online', avatar: null }
+      ],
+      conversations: [],
+      groups: [],
+      groupMembers: [],
+      messages: [],
+      lastRead: {}
+    };
+
+    function loadDB() {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (!stored) { localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultDB)); return JSON.parse(JSON.stringify(defaultDB)); }
+      try {
+        const db = JSON.parse(stored);
+        if (!db.lastRead) db.lastRead = {};
+        db.users.forEach(u => { if (u.passwordChanged === undefined) u.passwordChanged = (u.role === 'admin'); if (!u.presence) u.presence = 'online'; if (!u.avatar) u.avatar = null; });
+        return db;
+      } catch (e) { return JSON.parse(JSON.stringify(defaultDB)); }
+    }
+
+    function saveDB(db) { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); }
+    function genId() { return Date.now() + '-' + Math.random().toString(36).substr(2, 6); }
+
+    const app = createApp({
+      setup() {
+        const db = reactive(loadDB());
+        watch(db, (newVal) => { saveDB(newVal); }, { deep: true });
+
+        const currentUser = ref(null);
+        const loginInput = ref('');
+        const senhaInput = ref('');
+        const erroLogin = ref('');
+        const forcePasswordChange = ref(false);
+        const newPassword1 = ref('');
+        const newPassword2 = ref('');
+        const erroSenha = ref('');
+        const showAdminPanel = ref(false);
+        const showNewGroupModal = ref(false);
+        const showNewUserModal = ref(false);
+        const showProfileModal = ref(false);
+        const newUserName = ref('');
+        const newUserPass = ref('');
+        const newUserAutoApprove = ref(true);
+        const newGroupName = ref('');
+        const selectedGroupMembers = ref([]);
+        
+        // Mobile: controle de tela
+        const activeChat = reactive({ type: null, id: null, name: '' });
+        const showChatScreen = ref(false);
+        
+        const newMessage = ref('');
+        const fileInput = ref(null);
+        const searchQuery = ref('');
+        const novaConversaId = ref('');
+        const editingPresence = ref('online');
+        const avatarInput = ref(null);
+
+        const visibleUsers = computed(() => {
+          if (!currentUser.value) return [];
+          return db.users.filter(u => u.id !== currentUser.value.id && u.status === 'active' && !u.hidden);
+        });
+
+        const myPrivateChats = computed(() => {
+          if (!currentUser.value) return [];
+          const convs = db.conversations.filter(c => c.user1 === currentUser.value.id || c.user2 === currentUser.value.id);
+          let result = convs.map(c => {
+            const otherId = c.user1 === currentUser.value.id ? c.user2 : c.user1;
+            const other = db.users.find(u => u.id === otherId);
+            if (!other) return null;
+            const lastMsg = db.messages.filter(m => m.conversationId === c.id).sort((a,b) => b.createdAt - a.createdAt)[0];
+            return { ...c, other, lastMsg };
+          }).filter(c => c !== null);
+          if (searchQuery.value) result = result.filter(c => c.other.login.toLowerCase().includes(searchQuery.value.toLowerCase()));
+          return result;
+        });
+
+        const myGroups = computed(() => {
+          if (!currentUser.value) return [];
+          const memberOf = db.groupMembers.filter(m => m.userId === currentUser.value.id).map(m => m.groupId);
+          return db.groups.filter(g => memberOf.includes(g.id));
+        });
+
+        const activeMessages = computed(() => {
+          if (!activeChat.id) return [];
+          if (activeChat.type === 'private') return db.messages.filter(m => m.conversationId === activeChat.id).sort((a,b) => a.createdAt - b.createdAt);
+          else if (activeChat.type === 'group') return db.messages.filter(m => m.groupId === activeChat.id).sort((a,b) => a.createdAt - b.createdAt);
+          return [];
+        });
+
+        const adminUserList = computed(() => db.users.filter(u => u.role !== 'admin'));
+
+        function getPresenceDot(p) { const map = { 'online':'🟢','busy':'🟡','away':'🟠','offline':'⚫' }; return map[p]||'⚫'; }
+        function getInitials(l) { return l.substring(0,2).toUpperCase(); }
+        function formatLastMessageTime(ts) { if(!ts) return ''; const d = new Date(ts); const now = new Date(); if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); return d.toLocaleDateString(); }
+        function getSenderName(id) { const u = db.users.find(u => u.id === id); return u ? u.login : 'Desconhecido'; }
+        function getSender(id) { return db.users.find(u => u.id === id); }
+        function isImageFile(ft) { return ft && ft.startsWith('image/'); }
+        
+        function scrollToBottom() {
+          nextTick(() => {
+            const el = document.querySelector('#messages-container');
+            if(el) el.scrollTop = el.scrollHeight;
+          });
+        }
+
+        function getLastReadTimestamp(chatType, chatId) {
+          if (!currentUser.value) return 0;
+          const userId = currentUser.value.id;
+          if (!db.lastRead[userId]) db.lastRead[userId] = { private: {}, group: {} };
+          return db.lastRead[userId][chatType === 'private' ? 'private' : 'group'][chatId] || 0;
+        }
+        function setLastReadNow(chatType, chatId) {
+          if (!currentUser.value) return;
+          const userId = currentUser.value.id;
+          if (!db.lastRead[userId]) db.lastRead[userId] = { private: {}, group: {} };
+          db.lastRead[userId][chatType === 'private' ? 'private' : 'group'][chatId] = Date.now();
+        }
+        function unreadCount(chatType, chatId) {
+          if (!currentUser.value) return 0;
+          const lastRead = getLastReadTimestamp(chatType, chatId);
+          let msgs = [];
+          if (chatType === 'private') msgs = db.messages.filter(m => m.conversationId === chatId && m.senderId !== currentUser.value.id);
+          else msgs = db.messages.filter(m => m.groupId === chatId && m.senderId !== currentUser.value.id);
+          return msgs.filter(m => m.createdAt > lastRead).length;
+        }
+        function markAsRead(chatType, chatId) { setLastReadNow(chatType, chatId); }
+
+        function login() {
+          erroLogin.value = '';
+          const user = db.users.find(u => u.login === loginInput.value && u.password === senhaInput.value);
+          if (!user) { erroLogin.value = 'Credenciais inválidas.'; return; }
+          if (user.status !== 'active') { erroLogin.value = 'Usuário não aprovado.'; return; }
+          currentUser.value = { ...user };
+          loginInput.value = senhaInput.value = '';
+          if (!user.passwordChanged) forcePasswordChange.value = true;
+          else { forcePasswordChange.value = false; if (user.role === 'admin') showAdminPanel.value = false; }
+          if (!db.lastRead[user.id]) db.lastRead[user.id] = { private: {}, group: {} };
+        }
+        function logout() {
+          currentUser.value = null;
+          activeChat.id = activeChat.type = null; activeChat.name = '';
+          showChatScreen.value = false;
+          showAdminPanel.value = forcePasswordChange.value = false;
+        }
+
+        function changePassword() {
+          erroSenha.value = '';
+          if (!newPassword1.value || newPassword1.value.length < 4) { erroSenha.value = 'Senha muito curta.'; return; }
+          if (newPassword1.value !== newPassword2.value) { erroSenha.value = 'Senhas não coincidem.'; return; }
+          if (currentUser.value && newPassword1.value === currentUser.value.password) { erroSenha.value = 'Senha igual à temporária.'; return; }
+          const userInDb = db.users.find(u => u.id === currentUser.value.id);
+          if (userInDb) { userInDb.password = newPassword1.value; userInDb.passwordChanged = true; }
+          currentUser.value.password = newPassword1.value;
+          currentUser.value.passwordChanged = true;
+          forcePasswordChange.value = false;
+          newPassword1.value = newPassword2.value = '';
+        }
+
+        function openProfile() { editingPresence.value = currentUser.value.presence || 'online'; showProfileModal.value = true; }
+        function saveProfile() {
+          const u = db.users.find(u => u.id === currentUser.value.id);
+          if (u) { u.presence = editingPresence.value; currentUser.value.presence = editingPresence.value; }
+          showProfileModal.value = false;
+        }
+        function handleAvatarUpload(e) {
+          const file = e.target.files[0]; if (!file) return;
+          if (file.size > 500*1024) { alert('Máximo 500KB'); return; }
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            const u = db.users.find(u => u.id === currentUser.value.id);
+            if (u) { u.avatar = ev.target.result; currentUser.value.avatar = ev.target.result; }
+          };
+          reader.readAsDataURL(file);
+        }
+
+        function generateCredentials() {
+          const adj = ['azul','feliz','rapido','sabio','forte','leve'];
+          const sub = ['gato','tigre','lobo','panda','raposa','coruja'];
+          newUserName.value = `${adj[Math.floor(Math.random()*6)]}.${sub[Math.floor(Math.random()*6)]}${Math.floor(Math.random()*100)}`;
+          newUserPass.value = `${adj[Math.floor(Math.random()*6)]}${Math.floor(Math.random()*100)}`;
+        }
+        function createUser() {
+          if (!newUserName.value || !newUserPass.value) return;
+          if (db.users.find(u => u.login === newUserName.value)) { alert('Login já existe.'); return; }
+          db.users.push({
+            id: genId(), login: newUserName.value, password: newUserPass.value, role: 'user',
+            status: newUserAutoApprove.value ? 'active' : 'pending', hidden: false, createdBy: currentUser.value.id,
+            approvedBy: newUserAutoApprove.value ? currentUser.value.id : null, createdAt: Date.now(),
+            passwordChanged: false, presence: 'online', avatar: null
+          });
+          newUserName.value = newUserPass.value = ''; showNewUserModal.value = false;
+        }
+        function approveUser(id) { const u = db.users.find(u => u.id === id); if (u) { u.status = 'active'; u.approvedBy = currentUser.value.id; } }
+        function toggleHidden(id) { const u = db.users.find(u => u.id === id); if (u && u.role !== 'admin') u.hidden = !u.hidden; }
+        function deleteUser(id) {
+          const u = db.users.find(u => u.id === id);
+          if (!u || u.role === 'admin') { alert('Não pode excluir admin.'); return; }
+          if (!confirm(`Excluir ${u.login}?`)) return;
+          db.users = db.users.filter(u => u.id !== id);
+          db.conversations = db.conversations.filter(c => c.user1 !== id && c.user2 !== id);
+          db.groupMembers = db.groupMembers.filter(m => m.userId !== id);
+          db.messages = db.messages.filter(m => m.senderId !== id);
+          if (activeChat.type === 'private') { const conv = db.conversations.find(c => c.id === activeChat.id); if (conv && (conv.user1 === id || conv.user2 === id)) { closeChat(); } }
+          delete db.lastRead[id];
+        }
+        function deleteConversation(cid) {
+          if (!confirm('Apagar conversa?')) return;
+          db.conversations = db.conversations.filter(c => c.id !== cid);
+          db.messages = db.messages.filter(m => m.conversationId !== cid);
+          Object.keys(db.lastRead).forEach(uid => { if (db.lastRead[uid].private[cid]) delete db.lastRead[uid].private[cid]; });
+          if (activeChat.type === 'private' && activeChat.id === cid) closeChat();
+        }
+        function deleteGroup(gid) {
+          if (!confirm('Excluir grupo?')) return;
+          db.groups = db.groups.filter(g => g.id !== gid);
+          db.groupMembers = db.groupMembers.filter(m => m.groupId !== gid);
+          db.messages = db.messages.filter(m => m.groupId !== gid);
+          Object.keys(db.lastRead).forEach(uid => { if (db.lastRead[uid].group[gid]) delete db.lastRead[uid].group[gid]; });
+          if (activeChat.type === 'group' && activeChat.id === gid) closeChat();
+        }
+        function createGroup() {
+          if (!newGroupName.value || selectedGroupMembers.value.length === 0) return;
+          const gid = genId();
+          db.groups.push({ id: gid, name: newGroupName.value, createdBy: currentUser.value.id, createdAt: Date.now() });
+          [...selectedGroupMembers.value, currentUser.value.id].forEach(uid => db.groupMembers.push({ groupId: gid, userId: uid }));
+          newGroupName.value = ''; selectedGroupMembers.value = []; showNewGroupModal.value = false;
+        }
+
+        function triggerFileUpload() { fileInput.value.click(); }
+        function handleFileUpload(e) {
+          const file = e.target.files[0]; if (!file) return;
+          if (file.size > MAX_FILE_SIZE) { alert('Máximo 2MB'); return; }
+          const reader = new FileReader();
+          reader.onload = (ev) => { sendFileMessage(ev.target.result, file.name, file.type); };
+          reader.readAsDataURL(file);
+          e.target.value = '';
+        }
         function sendFileMessage(dataUrl, name, type) {
           if (!activeChat.id) return;
           const msg = { id: genId(), senderId: currentUser.value.id, text: '', file: { name, type, data: dataUrl }, createdAt: Date.now() };
@@ -16,7 +401,20 @@ head>
           scrollToBottom();
         }
 
-        // Chat
+        function openChat(chat) {
+          activeChat.type = chat.type;
+          activeChat.id = chat.id;
+          activeChat.name = chat.name;
+          showChatScreen.value = true;
+          markAsRead(chat.type, chat.id);
+          scrollToBottom();
+        }
+        
+        function closeChat() {
+          showChatScreen.value = false;
+          activeChat.type = null; activeChat.id = null; activeChat.name = '';
+        }
+
         function selectPrivateChat(userId) {
           if (!userId) return;
           let conv = db.conversations.find(c => (c.user1 === currentUser.value.id && c.user2 === userId) || (c.user1 === userId && c.user2 === currentUser.value.id));
@@ -25,22 +423,15 @@ head>
             db.conversations.push(conv);
           }
           const other = db.users.find(u => u.id === userId);
-          activeChat.type = 'private';
-          activeChat.id = conv.id;
-          activeChat.name = other.login;
-          markAsRead('private', conv.id);
+          openChat({ type: 'private', id: conv.id, name: other.login });
           novaConversaId.value = '';
-          scrollToBottom();
         }
         function selectGroupChat(groupId) {
           const g = db.groups.find(g => g.id === groupId);
           if (!g) return;
-          activeChat.type = 'group';
-          activeChat.id = groupId;
-          activeChat.name = g.name;
-          markAsRead('group', groupId);
-          scrollToBottom();
+          openChat({ type: 'group', id: groupId, name: g.name });
         }
+
         function sendMessage() {
           if (!newMessage.value.trim() || !activeChat.id) return;
           const msg = { id: genId(), senderId: currentUser.value.id, text: newMessage.value.trim(), createdAt: Date.now() };
@@ -58,9 +449,10 @@ head>
           db, currentUser, loginInput, senhaInput, erroLogin, forcePasswordChange, newPassword1, newPassword2, erroSenha, changePassword,
           showAdminPanel, showNewUserModal, showNewGroupModal, showProfileModal,
           newUserName, newUserPass, newUserAutoApprove, newGroupName, selectedGroupMembers,
-          activeChat, newMessage, fileInput, searchQuery, novaConversaId,
+          activeChat, showChatScreen, closeChat,
+          newMessage, fileInput, searchQuery, novaConversaId,
           visibleUsers, myPrivateChats, myGroups, activeMessages, adminUserList,
-          login, logout, generateCredentials, createUser, approveUser, toggleHidden, toggleBlock,
+          login, logout, generateCredentials, createUser, approveUser, toggleHidden,
           deleteUser, deleteConversation, deleteGroup, createGroup,
           selectPrivateChat, selectGroupChat, sendMessage, getSenderName, scrollToBottom,
           unreadCount, markAsRead, getSender,
@@ -70,234 +462,217 @@ head>
         };
       },
       template: `
-        <div class="h-full w-full flex">
+        <div class="h-screen w-screen bg-white">
           <!-- Login -->
-          <div v-if="!currentUser" class="flex items-center justify-center h-full w-full p-4" style="background: #0b141a;">
-            <div class="bg-[#111b21] p-8 rounded-2xl shadow-2xl w-full max-w-md border border-[#222e35]">
+          <div v-if="!currentUser" class="flex items-center justify-center h-full bg-[#e5ded8] p-4">
+            <div class="bg-white p-6 rounded-xl shadow-xl w-full max-w-sm">
               <div class="text-center mb-6">
-                <div class="w-16 h-16 mx-auto bg-[#1f8c76] rounded-2xl flex items-center justify-center shadow-lg">
+                <div class="w-16 h-16 mx-auto bg-[#075E54] rounded-full flex items-center justify-center shadow-md">
                   <i class="fas fa-comment-dots text-3xl text-white"></i>
                 </div>
-                <h1 class="text-3xl font-semibold text-white mt-4 tracking-tight">ChatFacil</h1>
-                <p class="text-[#8696a0] text-sm mt-1">Comunicação simples e segura</p>
+                <h1 class="text-2xl font-semibold text-gray-800 mt-3">ChatFacil</h1>
+                <p class="text-gray-500 text-sm">Comunicação simples</p>
               </div>
               <form @submit.prevent="login">
-                <div class="mb-4">
-                  <input v-model="loginInput" type="text" placeholder="Login" class="w-full p-3 bg-[#1f2c33] border border-[#2a373f] rounded-xl text-white placeholder-[#8696a0] focus:outline-none focus:ring-2 focus:ring-[#1f8c76]">
-                </div>
-                <div class="mb-6">
-                  <input v-model="senhaInput" type="password" placeholder="Senha" class="w-full p-3 bg-[#1f2c33] border border-[#2a373f] rounded-xl text-white placeholder-[#8696a0] focus:outline-none focus:ring-2 focus:ring-[#1f8c76]">
-                </div>
-                <button type="submit" class="w-full bg-[#1f8c76] hover:bg-[#1a7562] text-white py-3 rounded-xl font-medium transition shadow-lg shadow-[#1f8c76]/20">Entrar</button>
-                <p v-if="erroLogin" class="text-red-400 text-sm mt-3 text-center">{{ erroLogin }}</p>
+                <input v-model="loginInput" type="text" placeholder="Login" class="w-full p-3 mb-3 border border-gray-300 rounded-lg">
+                <input v-model="senhaInput" type="password" placeholder="Senha" class="w-full p-3 mb-6 border border-gray-300 rounded-lg">
+                <button type="submit" class="w-full bg-[#075E54] text-white py-3 rounded-lg font-medium">Entrar</button>
+                <p v-if="erroLogin" class="text-red-500 text-sm mt-3 text-center">{{ erroLogin }}</p>
               </form>
-              <div class="mt-6 text-xs text-[#8696a0] text-center border-t border-[#222e35] pt-4">
-                Admin: admin / admin123
-              </div>
+              <p class="text-xs text-gray-400 text-center mt-4">Admin: admin / admin123</p>
             </div>
           </div>
 
           <!-- Troca de senha -->
-          <div v-else-if="forcePasswordChange" class="flex items-center justify-center h-full w-full p-4" style="background: #0b141a;">
-            <div class="bg-[#111b21] p-6 rounded-2xl shadow-xl w-full max-w-sm border border-[#222e35]">
-              <h2 class="text-xl font-semibold mb-4 text-white">🔐 Alterar Senha</h2>
-              <p class="text-sm text-[#8696a0] mb-4">Primeiro acesso: defina sua senha pessoal</p>
+          <div v-else-if="forcePasswordChange" class="flex items-center justify-center h-full bg-[#e5ded8] p-4">
+            <div class="bg-white p-6 rounded-xl shadow-xl w-full max-w-sm">
+              <h2 class="text-xl font-semibold mb-4 text-gray-800">🔐 Alterar Senha</h2>
+              <p class="text-sm text-gray-500 mb-4">Defina sua senha pessoal</p>
               <form @submit.prevent="changePassword">
-                <input v-model="newPassword1" type="password" placeholder="Nova senha" class="w-full p-3 mb-3 bg-[#1f2c33] border border-[#2a373f] rounded-xl text-white">
-                <input v-model="newPassword2" type="password" placeholder="Confirme" class="w-full p-3 mb-4 bg-[#1f2c33] border border-[#2a373f] rounded-xl text-white">
-                <button type="submit" class="w-full bg-[#1f8c76] text-white py-3 rounded-xl font-medium">Salvar</button>
-                <p v-if="erroSenha" class="text-red-400 text-sm mt-3">{{ erroSenha }}</p>
+                <input v-model="newPassword1" type="password" placeholder="Nova senha" class="w-full p-3 mb-3 border border-gray-300 rounded-lg">
+                <input v-model="newPassword2" type="password" placeholder="Confirme" class="w-full p-3 mb-4 border border-gray-300 rounded-lg">
+                <button type="submit" class="w-full bg-[#075E54] text-white py-3 rounded-lg font-medium">Salvar</button>
+                <p v-if="erroSenha" class="text-red-500 text-sm mt-3">{{ erroSenha }}</p>
               </form>
             </div>
           </div>
 
-          <!-- App principal -->
-          <div v-else class="flex w-full h-full">
-            <!-- Sidebar -->
-            <div class="w-full md:w-96 bg-sidebar flex flex-col h-full border-r border-custom">
-              <!-- Header -->
-              <div class="p-4 flex justify-between items-center border-b border-custom">
-                <div class="flex items-center gap-3 cursor-pointer" @click="openProfile">
-                  <div class="relative">
-                    <div v-if="currentUser.avatar" class="w-10 h-10 rounded-full overflow-hidden"><img :src="currentUser.avatar" class="w-full h-full object-cover" /></div>
-                    <div v-else class="avatar-placeholder w-10 h-10 rounded-full text-sm">{{ getInitials(currentUser.login) }}</div>
-                    <span class="absolute -bottom-0.5 -right-0.5 text-sm">{{ getPresenceDot(currentUser.presence) }}</span>
-                  </div>
-                  <span class="text-white font-medium">{{ currentUser.login }}</span>
-                </div>
-                <div class="flex gap-2 text-[#aebac1]">
-                  <button v-if="currentUser.role === 'admin'" @click="showAdminPanel = !showAdminPanel" class="hover:bg-white/10 p-2 rounded-full"><i class="fas fa-cog"></i></button>
-                  <button @click="logout" class="hover:bg-white/10 p-2 rounded-full"><i class="fas fa-sign-out-alt"></i></button>
-                </div>
+          <!-- Tela principal: Conversas (mobile) -->
+          <div v-else-if="!showChatScreen" class="conversas-container">
+            <!-- Header -->
+            <div class="header-green">
+              <div class="flex items-center gap-3 flex-1 cursor-pointer" @click="openProfile">
+                <div v-if="currentUser.avatar" class="w-10 h-10 rounded-full overflow-hidden"><img :src="currentUser.avatar" class="w-full h-full object-cover" /></div>
+                <div v-else class="avatar-placeholder w-10 h-10 text-sm">{{ getInitials(currentUser.login) }}</div>
+                <span class="text-white font-medium text-lg">{{ currentUser.login }}</span>
               </div>
-
-              <!-- Admin panel -->
-              <div v-if="showAdminPanel && currentUser.role === 'admin'" class="bg-[#1f2c33] p-3 border-b border-custom space-y-3">
-                <div class="flex justify-between items-center">
-                  <h3 class="text-white text-sm font-semibold">👥 Usuários</h3>
-                  <button @click="showNewUserModal = true" class="text-xs bg-[#1f8c76] text-white px-3 py-1.5 rounded-full">+ Novo</button>
-                </div>
-                <div class="max-h-36 overflow-y-auto custom-scroll text-sm space-y-1">
-                  <div v-for="u in db.users" :key="u.id" class="flex items-center justify-between py-1.5 border-b border-[#2a373f] last:border-0">
-                    <div class="flex items-center gap-1 text-white"><span>{{ u.login }}</span><span v-if="!u.passwordChanged" class="text-orange-300 text-xs">⚠️</span></div>
-                    <div class="flex gap-1">
-                      <button v-if="u.status==='pending'" @click="approveUser(u.id)" class="text-green-400 text-xs p-1">✓</button>
-                      <button @click="toggleHidden(u.id)" class="text-gray-400 text-xs p-1">{{ u.hidden ? '👁' : '👻' }}</button>
-                      <button v-if="u.role!=='admin'" @click="deleteUser(u.id)" class="text-red-400 text-xs p-1">🗑️</button>
-                    </div>
-                  </div>
-                </div>
-                <button @click="showNewGroupModal = true" class="text-xs bg-[#1f8c76] text-white px-3 py-1.5 rounded-full w-full">➕ Novo grupo</button>
-              </div>
-
-              <!-- Nova conversa (dropdown) -->
-              <div class="p-3 border-b border-custom">
-                <select v-model="novaConversaId" @change="selectPrivateChat(novaConversaId)" class="w-full p-2.5 bg-[#1f2c33] text-white rounded-xl border border-[#2a373f] focus:outline-none focus:ring-2 focus:ring-[#1f8c76]">
-                  <option value="">➕ Nova conversa privada...</option>
-                  <option v-for="u in visibleUsers" :key="u.id" :value="u.id">{{ u.login }}</option>
-                </select>
-              </div>
-
-              <!-- Pesquisa -->
-              <div class="p-3">
-                <input v-model="searchQuery" type="text" placeholder="Pesquisar conversa" class="search-box w-full">
-              </div>
-
-              <!-- Lista de conversas -->
-              <div class="flex-1 overflow-y-auto custom-scroll">
-                <div v-for="chat in myPrivateChats" :key="chat.id" @click="selectPrivateChat(chat.other.id)" class="flex items-center p-3 hover-sidebar cursor-pointer border-b border-custom">
-                  <div class="relative mr-3">
-                    <div v-if="chat.other.avatar" class="w-12 h-12 rounded-full overflow-hidden"><img :src="chat.other.avatar" class="w-full h-full object-cover" /></div>
-                    <div v-else class="avatar-placeholder w-12 h-12 rounded-full">{{ getInitials(chat.other.login) }}</div>
-                    <span class="absolute -bottom-0.5 -right-0.5 text-sm">{{ getPresenceDot(chat.other.presence) }}</span>
-                  </div>
-                  <div class="flex-1 min-w-0">
-                    <div class="flex justify-between items-center">
-                      <span class="text-white font-medium truncate">{{ chat.other.login }}</span>
-                      <span class="text-xs text-secondary">{{ chat.lastMsg ? formatLastMessageTime(chat.lastMsg.createdAt) : '' }}</span>
-                    </div>
-                    <div class="flex justify-between items-center mt-0.5">
-                      <span class="text-sm text-secondary truncate">{{ chat.lastMsg ? (chat.lastMsg.text || '📎 Arquivo') : 'Nenhuma mensagem' }}</span>
-                      <span v-if="unreadCount('private', chat.id) > 0" class="badge-unread">{{ unreadCount('private', chat.id) }}</span>
-                    </div>
-                  </div>
-                </div>
-                <!-- Grupos -->
-                <div v-for="group in myGroups" :key="group.id" @click="selectGroupChat(group.id)" class="flex items-center p-3 hover-sidebar cursor-pointer border-b border-custom">
-                  <div class="w-12 h-12 rounded-full bg-[#1f8c76] flex items-center justify-center mr-3 text-white"><i class="fas fa-users"></i></div>
-                  <div class="flex-1">
-                    <div class="flex justify-between items-center">
-                      <span class="text-white font-medium">{{ group.name }}</span>
-                      <span v-if="unreadCount('group', group.id) > 0" class="badge-unread">{{ unreadCount('group', group.id) }}</span>
-                    </div>
-                  </div>
-                </div>
-                <div v-if="myPrivateChats.length === 0 && myGroups.length === 0" class="text-center text-secondary p-8">
-                  <i class="fas fa-comments text-3xl mb-2 opacity-50"></i>
-                  <p>Nenhuma conversa ainda</p>
-                  <p class="text-xs mt-1">Use o menu acima para iniciar</p>
-                </div>
+              <div class="flex gap-4">
+                <button v-if="currentUser.role === 'admin'" @click="showAdminPanel = !showAdminPanel" class="text-white"><i class="fas fa-cog"></i></button>
+                <button @click="logout" class="text-white"><i class="fas fa-sign-out-alt"></i></button>
               </div>
             </div>
-
-            <!-- Chat area -->
-            <div class="flex-1 flex flex-col h-full bg-chat min-w-0">
-              <!-- Cabeçalho do chat -->
-              <div class="p-4 flex items-center gap-3 border-b border-custom bg-sidebar/50">
-                <div class="w-10 h-10 rounded-full bg-[#1f8c76] flex items-center justify-center text-white">
-                  <i v-if="activeChat.type==='private'" class="fas fa-user"></i>
-                  <i v-else-if="activeChat.type==='group'" class="fas fa-users"></i>
-                </div>
-                <div class="text-white font-medium">{{ activeChat.name || 'ChatFacil' }}</div>
+            
+            <!-- Painel admin (expansível) -->
+            <div v-if="showAdminPanel && currentUser.role === 'admin'" class="bg-gray-100 p-3 border-b border-gray-300">
+              <div class="flex justify-between items-center mb-2">
+                <h3 class="font-semibold text-sm">👥 Usuários</h3>
+                <button @click="showNewUserModal = true" class="text-xs bg-[#25d366] text-black px-3 py-1 rounded-full">+ Novo</button>
               </div>
-
-              <!-- Mensagens -->
-              <div id="messages-container" class="flex-1 overflow-y-auto p-4 space-y-3 custom-scroll" style="background-image: url('https://web.whatsapp.com/img/bg-chat-tile-dark_a4be512e7195b6b733d9110b408f075d.png'); background-size: contain;">
-                <div v-for="msg in activeMessages" :key="msg.id" class="flex gap-2" :class="{'flex-row-reverse': msg.senderId === currentUser.id}">
-                  <div v-if="msg.senderId !== currentUser.id" class="flex-shrink-0">
-                    <div v-if="getSender(msg.senderId)?.avatar" class="w-8 h-8 rounded-full overflow-hidden"><img :src="getSender(msg.senderId).avatar" class="w-full h-full object-cover" /></div>
-                    <div v-else class="avatar-placeholder w-8 h-8 rounded-full text-xs">{{ getInitials(getSenderName(msg.senderId)) }}</div>
-                  </div>
-                  <div class="max-w-[70%]">
-                    <div v-if="msg.senderId !== currentUser.id" class="text-xs text-secondary ml-1 mb-0.5">{{ getSenderName(msg.senderId) }}</div>
-                    <div v-if="msg.text" class="msg-bubble" :class="msg.senderId === currentUser.id ? 'msg-out' : 'msg-in'">{{ msg.text }}</div>
-                    <div v-if="msg.file" class="mt-1">
-                      <div v-if="isImageFile(msg.file.type)" class="max-w-xs cursor-pointer" @click="downloadFile(msg.file.data, msg.file.name)"><img :src="msg.file.data" class="rounded-lg shadow" /></div>
-                      <div v-else class="bg-[#1f2c33] p-3 rounded-lg shadow flex items-center gap-2"><i class="fas fa-file text-secondary"></i><span class="truncate">{{ msg.file.name }}</span><button @click="downloadFile(msg.file.data, msg.file.name)" class="text-[#1f8c76]"><i class="fas fa-download"></i></button></div>
-                    </div>
-                    <div class="text-xs text-secondary mt-1 text-right">{{ new Date(msg.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) }}</div>
+              <div class="max-h-32 overflow-y-auto text-sm space-y-1 mb-2">
+                <div v-for="u in db.users" :key="u.id" class="flex items-center justify-between py-1">
+                  <span :class="{'text-green-600': u.status==='active'}">{{ u.login }}</span>
+                  <div class="flex gap-1">
+                    <button v-if="u.status==='pending'" @click="approveUser(u.id)" class="text-green-600">✅</button>
+                    <button @click="toggleHidden(u.id)" class="text-gray-600"><i :class="u.hidden ? 'fas fa-eye-slash' : 'fas fa-eye'"></i></button>
+                    <button v-if="u.role!=='admin'" @click="deleteUser(u.id)" class="text-red-500">🗑️</button>
                   </div>
                 </div>
-                <div v-if="activeMessages.length === 0 && activeChat.id" class="text-center text-secondary py-12">
-                  <i class="far fa-smile text-4xl mb-3 opacity-40"></i>
-                  <p>Nenhuma mensagem ainda</p>
-                  <p class="text-xs mt-1">Envie uma mensagem para começar</p>
+              </div>
+              <button @click="showNewGroupModal = true" class="text-xs bg-[#25d366] text-black px-3 py-1 rounded-full w-full">➕ Novo grupo</button>
+            </div>
+
+            <!-- Barra de pesquisa -->
+            <div class="search-bar">
+              <input v-model="searchQuery" type="text" placeholder="Pesquisar conversa" class="search-input-mobile">
+            </div>
+
+            <!-- Lista de conversas -->
+            <div class="flex-1 overflow-y-auto bg-white">
+              <div v-for="chat in myPrivateChats" :key="chat.id" @click="selectPrivateChat(chat.other.id)" class="chat-item">
+                <div class="relative mr-3">
+                  <div v-if="chat.other.avatar" class="w-12 h-12 rounded-full overflow-hidden"><img :src="chat.other.avatar" class="w-full h-full object-cover" /></div>
+                  <div v-else class="avatar-placeholder w-12 h-12">{{ getInitials(chat.other.login) }}</div>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex justify-between items-center">
+                    <span class="font-semibold text-gray-900 truncate">{{ chat.other.login }}</span>
+                    <span class="text-xs text-gray-500">{{ chat.lastMsg ? formatLastMessageTime(chat.lastMsg.createdAt) : '' }}</span>
+                  </div>
+                  <div class="flex justify-between items-center mt-0.5">
+                    <span class="text-sm text-gray-600 truncate">{{ chat.lastMsg ? (chat.lastMsg.text || '📎 Arquivo') : 'Nenhuma mensagem' }}</span>
+                    <span v-if="unreadCount('private', chat.id) > 0" class="badge-unread">{{ unreadCount('private', chat.id) }}</span>
+                  </div>
                 </div>
               </div>
-
-              <!-- Input -->
-              <div v-if="activeChat.id" class="p-3 bg-sidebar/50 flex items-center gap-2">
-                <button @click="triggerFileUpload" class="text-secondary hover:text-white p-2"><i class="fas fa-paperclip"></i></button>
-                <input v-model="newMessage" @keyup.enter="sendMessage" type="text" placeholder="Digite uma mensagem" class="message-input flex-1">
-                <button @click="sendMessage" class="text-[#1f8c76] hover:text-white p-2"><i class="fas fa-paper-plane"></i></button>
-                <input type="file" ref="fileInput" class="hidden" @change="handleFileUpload">
+              <div v-for="group in myGroups" :key="group.id" @click="selectGroupChat(group.id)" class="chat-item">
+                <div class="w-12 h-12 rounded-full bg-[#25d366] flex items-center justify-center mr-3 text-white"><i class="fas fa-users"></i></div>
+                <div class="flex-1">
+                  <div class="flex justify-between items-center">
+                    <span class="font-semibold text-gray-900">{{ group.name }}</span>
+                    <span v-if="unreadCount('group', group.id) > 0" class="badge-unread">{{ unreadCount('group', group.id) }}</span>
+                  </div>
+                </div>
               </div>
-              <div v-else class="p-3 bg-sidebar/50 text-center text-secondary text-sm">
-                <i class="far fa-comment-dots mr-2"></i> Selecione uma conversa para começar
+              <!-- Botão nova conversa (flutuante) -->
+              <div class="fixed bottom-6 right-6">
+                <button @click="showNewUserModal = true" v-if="currentUser.role === 'admin'" class="w-14 h-14 bg-[#25d366] rounded-full shadow-lg flex items-center justify-center text-white text-2xl"><i class="fas fa-user-plus"></i></button>
+                <div v-else class="relative">
+                  <select v-model="novaConversaId" @change="selectPrivateChat(novaConversaId)" class="absolute bottom-0 right-0 opacity-0 w-14 h-14">
+                    <option value="">Nova conversa</option>
+                    <option v-for="u in visibleUsers" :key="u.id" :value="u.id">{{ u.login }}</option>
+                  </select>
+                  <button class="w-14 h-14 bg-[#25d366] rounded-full shadow-lg flex items-center justify-center text-white text-2xl"><i class="fas fa-comment"></i></button>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Modals (mantidos com estilo escuro) -->
-          <div v-if="showProfileModal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" @click.self="showProfileModal = false">
-            <div class="bg-[#111b21] p-5 rounded-2xl w-full max-w-sm border border-[#222e35]">
-              <h2 class="text-lg font-bold mb-4 text-white">Meu Perfil</h2>
+          <!-- Tela de Chat (mobile) -->
+          <div v-else class="chat-container">
+            <!-- Header do chat -->
+            <div class="header-green">
+              <button @click="closeChat" class="text-white mr-2"><i class="fas fa-arrow-left"></i></button>
+              <div class="flex items-center gap-3 flex-1">
+                <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white">
+                  <i v-if="activeChat.type==='private'" class="fas fa-user"></i>
+                  <i v-else class="fas fa-users"></i>
+                </div>
+                <div>
+                  <div class="text-white font-medium">{{ activeChat.name }}</div>
+                  <div v-if="activeChat.type==='group'" class="text-xs text-white/70">{{ db.groupMembers.filter(m => m.groupId === activeChat.id).length }} participantes</div>
+                </div>
+              </div>
+              <button class="text-white"><i class="fas fa-ellipsis-v"></i></button>
+            </div>
+
+            <!-- Mensagens -->
+            <div id="messages-container" class="flex-1 overflow-y-auto p-3 space-y-2" style="background-image: url('https://web.whatsapp.com/img/bg-chat-tile-light_04fcacde539c58cca6745483d4858c52.png'); background-size: contain;">
+              <div v-for="msg in activeMessages" :key="msg.id" class="flex gap-2" :class="{'flex-row-reverse': msg.senderId === currentUser.id}">
+                <div v-if="msg.senderId !== currentUser.id" class="flex-shrink-0">
+                  <div v-if="getSender(msg.senderId)?.avatar" class="w-8 h-8 rounded-full overflow-hidden"><img :src="getSender(msg.senderId).avatar" class="w-full h-full object-cover" /></div>
+                  <div v-else class="avatar-placeholder w-8 h-8 text-xs">{{ getInitials(getSenderName(msg.senderId)) }}</div>
+                </div>
+                <div class="max-w-[75%]">
+                  <div v-if="msg.senderId !== currentUser.id && activeChat.type === 'group'" class="text-xs text-gray-600 ml-1 mb-0.5">{{ getSenderName(msg.senderId) }}</div>
+                  <div v-if="msg.text" class="msg-bubble" :class="msg.senderId === currentUser.id ? 'msg-out' : 'msg-in'">{{ msg.text }}</div>
+                  <div v-if="msg.file" class="mt-1">
+                    <div v-if="isImageFile(msg.file.type)" class="max-w-xs cursor-pointer" @click="downloadFile(msg.file.data, msg.file.name)"><img :src="msg.file.data" class="rounded-lg" /></div>
+                    <div v-else class="bg-white p-3 rounded-lg flex items-center gap-2"><i class="fas fa-file"></i><span class="truncate">{{ msg.file.name }}</span><button @click="downloadFile(msg.file.data, msg.file.name)" class="text-[#075E54]"><i class="fas fa-download"></i></button></div>
+                  </div>
+                  <div class="text-xs text-gray-500 mt-1 text-right">{{ new Date(msg.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) }}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Rodapé de mensagem -->
+            <div class="chat-footer">
+              <button @click="triggerFileUpload" class="text-gray-600 p-2"><i class="fas fa-paperclip"></i></button>
+              <input v-model="newMessage" @keyup.enter="sendMessage" type="text" placeholder="Mensagem">
+              <button @click="sendMessage" class="text-[#075E54] p-2"><i class="fas fa-paper-plane"></i></button>
+              <input type="file" ref="fileInput" class="hidden" @change="handleFileUpload">
+            </div>
+          </div>
+
+          <!-- Modals (mantidos) -->
+          <div v-if="showProfileModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" @click.self="showProfileModal = false">
+            <div class="bg-white p-5 rounded-lg w-full max-w-sm">
+              <h2 class="text-lg font-bold mb-4">Perfil</h2>
               <div class="flex flex-col items-center mb-4">
-                <div class="relative mb-2">
-                  <div v-if="currentUser.avatar" class="w-20 h-20 rounded-full overflow-hidden"><img :src="currentUser.avatar" class="w-full h-full object-cover" /></div>
-                  <div v-else class="avatar-placeholder w-20 h-20 rounded-full text-2xl">{{ getInitials(currentUser.login) }}</div>
-                  <label class="absolute bottom-0 right-0 bg-[#1f8c76] p-1.5 rounded-full cursor-pointer shadow-lg"><i class="fas fa-camera text-white text-xs"></i><input type="file" accept="image/*" class="hidden" @change="handleAvatarUpload" ref="avatarInput"></label>
+                <div class="relative">
+                  <div v-if="currentUser.avatar" class="w-20 h-20 rounded-full overflow-hidden"><img :src="currentUser.avatar" /></div>
+                  <div v-else class="avatar-placeholder w-20 h-20 text-2xl">{{ getInitials(currentUser.login) }}</div>
+                  <label class="absolute bottom-0 right-0 bg-[#075E54] p-1.5 rounded-full text-white"><i class="fas fa-camera text-xs"></i><input type="file" accept="image/*" class="hidden" @change="handleAvatarUpload" ref="avatarInput"></label>
                 </div>
               </div>
               <div class="mb-4">
-                <label class="block text-sm mb-1 text-secondary">Status</label>
-                <select v-model="editingPresence" class="w-full p-2 bg-[#1f2c33] border border-[#2a373f] rounded-xl text-white">
-                  <option value="online">🟢 Disponível</option><option value="busy">🟡 Ocupado</option><option value="away">🟠 Ausente</option><option value="offline">🔴 Offline</option>
+                <label class="block text-sm mb-1">Status</label>
+                <select v-model="editingPresence" class="w-full p-2 border rounded">
+                  <option value="online">🟢 Disponível</option><option value="busy">🟡 Ocupado</option><option value="away">🟠 Ausente</option><option value="offline">⚫ Offline</option>
                 </select>
               </div>
               <div class="flex gap-2">
-                <button @click="saveProfile" class="flex-1 bg-[#1f8c76] text-white py-2 rounded-xl font-medium">Salvar</button>
-                <button @click="showProfileModal = false" class="flex-1 bg-[#2a373f] text-white py-2 rounded-xl">Cancelar</button>
+                <button @click="saveProfile" class="flex-1 bg-[#075E54] text-white py-2 rounded-lg">Salvar</button>
+                <button @click="showProfileModal = false" class="flex-1 bg-gray-300 py-2 rounded-lg">Cancelar</button>
               </div>
             </div>
           </div>
 
-          <div v-if="showNewUserModal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" @click.self="showNewUserModal = false">
-            <div class="bg-[#111b21] p-5 rounded-2xl w-full max-w-md border border-[#222e35]">
-              <h2 class="text-lg font-bold mb-4 text-white">Criar usuário</h2>
+          <div v-if="showNewUserModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" @click.self="showNewUserModal = false">
+            <div class="bg-white p-5 rounded-lg w-full max-w-md">
+              <h2 class="text-lg font-bold mb-4">Criar usuário</h2>
               <div class="space-y-3">
-                <input v-model="newUserName" placeholder="Login" class="w-full p-2.5 bg-[#1f2c33] border border-[#2a373f] rounded-xl text-white">
-                <input v-model="newUserPass" placeholder="Senha temporária" class="w-full p-2.5 bg-[#1f2c33] border border-[#2a373f] rounded-xl text-white">
-                <div class="flex items-center gap-2 text-secondary"><input type="checkbox" v-model="newUserAutoApprove" id="auto"><label for="auto">Aprovar automaticamente</label></div>
-                <button @click="generateCredentials" class="text-sm text-[#1f8c76]">🎲 Gerar aleatório</button>
+                <input v-model="newUserName" placeholder="Login" class="w-full p-2 border rounded">
+                <input v-model="newUserPass" placeholder="Senha temporária" class="w-full p-2 border rounded">
+                <div class="flex items-center gap-2"><input type="checkbox" v-model="newUserAutoApprove" id="auto"><label for="auto">Aprovar automaticamente</label></div>
+                <button @click="generateCredentials" class="text-sm text-[#075E54]">🎲 Gerar aleatório</button>
               </div>
               <div class="flex gap-2 mt-5">
-                <button @click="createUser" class="flex-1 bg-[#1f8c76] text-white py-2 rounded-xl">Criar</button>
-                <button @click="showNewUserModal = false" class="flex-1 bg-[#2a373f] text-white py-2 rounded-xl">Cancelar</button>
+                <button @click="createUser" class="flex-1 bg-[#075E54] text-white py-2 rounded-lg">Criar</button>
+                <button @click="showNewUserModal = false" class="flex-1 bg-gray-300 py-2 rounded-lg">Cancelar</button>
               </div>
             </div>
           </div>
 
-          <div v-if="showNewGroupModal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" @click.self="showNewGroupModal = false">
-            <div class="bg-[#111b21] p-5 rounded-2xl w-full max-w-md border border-[#222e35]">
-              <h2 class="text-lg font-bold mb-4 text-white">Criar grupo</h2>
-              <input v-model="newGroupName" placeholder="Nome do grupo" class="w-full p-2.5 mb-3 bg-[#1f2c33] border border-[#2a373f] rounded-xl text-white">
-              <div class="max-h-52 overflow-y-auto custom-scroll border border-[#2a373f] rounded-xl p-2 mb-3">
-                <div v-for="u in adminUserList" :key="u.id" class="flex items-center gap-2 py-1.5 text-white"><input type="checkbox" :value="u.id" v-model="selectedGroupMembers"><span>{{ u.login }}</span></div>
+          <div v-if="showNewGroupModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" @click.self="showNewGroupModal = false">
+            <div class="bg-white p-5 rounded-lg w-full max-w-md">
+              <h2 class="text-lg font-bold mb-4">Criar grupo</h2>
+              <input v-model="newGroupName" placeholder="Nome do grupo" class="w-full p-2 mb-3 border rounded">
+              <div class="max-h-52 overflow-y-auto border rounded p-2 mb-3">
+                <div v-for="u in adminUserList" :key="u.id" class="flex items-center gap-2 py-1"><input type="checkbox" :value="u.id" v-model="selectedGroupMembers"><span>{{ u.login }}</span></div>
               </div>
               <div class="flex gap-2">
-                <button @click="createGroup" class="flex-1 bg-[#1f8c76] text-white py-2 rounded-xl">Criar</button>
-                <button @click="showNewGroupModal = false" class="flex-1 bg-[#2a373f] text-white py-2 rounded-xl">Cancelar</button>
+                <button @click="createGroup" class="flex-1 bg-[#075E54] text-white py-2 rounded-lg">Criar</button>
+                <button @click="showNewGroupModal = false" class="flex-1 bg-gray-300 py-2 rounded-lg">Cancelar</button>
               </div>
             </div>
           </div>
@@ -306,3 +681,5 @@ head>
     });
     app.mount('#app');
   </script>
+</body>
+</html>
