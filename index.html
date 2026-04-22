@@ -71,6 +71,12 @@
       border: none;
     }
     .search-input::placeholder { color: #8696a0; }
+    
+    /* Ajuste para área de mensagens maior */
+    .chat-messages-container {
+      flex: 1 1 0%;
+      min-height: 0;
+    }
   </style>
 </head>
 <body class="text-gray-200">
@@ -187,7 +193,6 @@
             return { ...c, other, lastMsg };
           }).filter(c => c !== null);
           
-          // Filtro de pesquisa
           if (searchQuery.value) {
             result = result.filter(c => c.other.login.toLowerCase().includes(searchQuery.value.toLowerCase()));
           }
@@ -619,16 +624,16 @@
         <div class="h-full w-full flex">
           <!-- Tela de Login -->
           <div v-if="!currentUser" class="flex items-center justify-center h-full w-full p-4 bg-whatsapp-chat">
-            <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+            <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-md">
               <div class="text-center mb-6">
-                <i class="fas fa-comment-dots text-5xl text-whatsapp-green"></i>
+                <i class="fas fa-comment-dots text-6xl text-whatsapp-green"></i>
                 <h1 class="text-3xl font-light text-gray-800 mt-2">ChatFacil</h1>
                 <p class="text-gray-500 text-sm">Comunicação simples e segura</p>
               </div>
               <form @submit.prevent="login">
                 <input v-model="loginInput" type="text" placeholder="Login" class="w-full p-3 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
-                <input v-model="senhaInput" type="password" placeholder="Senha" class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
-                <button type="submit" class="w-full bg-whatsapp-green hover:bg-green-600 text-white py-3 rounded-lg font-semibold transition">Entrar</button>
+                <input v-model="senhaInput" type="password" placeholder="Senha" class="w-full p-3 mb-6 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                <button type="submit" class="w-full bg-whatsapp-green hover:bg-green-600 text-white py-3 rounded-lg font-semibold text-lg transition shadow-md">Entrar</button>
                 <p v-if="erroLogin" class="text-red-500 text-sm mt-3 text-center">{{ erroLogin }}</p>
               </form>
               <div class="mt-4 text-xs text-gray-400 text-center">
@@ -651,7 +656,7 @@
             </div>
           </div>
 
-          <!-- Interface Principal estilo WhatsApp -->
+          <!-- Interface Principal -->
           <div v-else class="flex w-full h-full bg-whatsapp-sidebar">
             <!-- Sidebar (lista de conversas) -->
             <div class="w-full md:w-96 flex flex-col h-full border-r border-gray-700">
@@ -740,8 +745,8 @@
               </div>
             </div>
 
-            <!-- Área do Chat -->
-            <div class="flex-1 flex flex-col h-full bg-whatsapp-chat">
+            <!-- Área do Chat (ampliada) -->
+            <div class="flex-1 flex flex-col h-full bg-whatsapp-chat min-w-0">
               <!-- Cabeçalho do chat ativo -->
               <div class="bg-whatsapp-header p-3 flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center text-white">
@@ -750,12 +755,12 @@
                 </div>
                 <div>
                   <div class="text-white font-medium">{{ activeChat.name || 'ChatFacil' }}</div>
-                  <div class="text-xs text-gray-300">online</div>
+                  <!-- removido "online" -->
                 </div>
               </div>
 
-              <!-- Mensagens -->
-              <div id="messages-container" class="flex-1 overflow-y-auto p-4 space-y-2 scroll-suave" style="background-image: url('https://web.whatsapp.com/img/bg-chat-tile-light_04fcacde539c58cca6745483d4858c52.png'); background-size: contain;">
+              <!-- Mensagens (container com altura flexível) -->
+              <div id="messages-container" class="chat-messages-container overflow-y-auto p-4 space-y-2 scroll-suave" style="background-image: url('https://web.whatsapp.com/img/bg-chat-tile-light_04fcacde539c58cca6745483d4858c52.png'); background-size: contain;">
                 <div v-for="msg in activeMessages" :key="msg.id" class="flex gap-2" :class="{'flex-row-reverse': msg.senderId === currentUser.id}">
                   <div v-if="msg.senderId !== currentUser.id" class="flex-shrink-0">
                     <div v-if="getSender(msg.senderId)?.avatar" class="w-8 h-8 rounded-full overflow-hidden">
@@ -763,7 +768,7 @@
                     </div>
                     <div v-else class="avatar-placeholder w-8 h-8 rounded-full text-xs">{{ getInitials(getSenderName(msg.senderId)) }}</div>
                   </div>
-                  <div class="max-w-[70%]">
+                  <div class="max-w-[75%]">
                     <div v-if="msg.senderId !== currentUser.id" class="text-xs text-gray-600 ml-1 mb-0.5">{{ getSenderName(msg.senderId) }}</div>
                     
                     <div v-if="msg.text" class="p-2 text-sm shadow" :class="msg.senderId === currentUser.id ? 'msg-propria' : 'msg-outro'">{{ msg.text }}</div>
@@ -784,17 +789,20 @@
                 </div>
               </div>
               
-              <!-- Barra de envio -->
-              <div v-if="activeChat.id" class="bg-gray-100 p-3 flex items-center gap-2">
+              <!-- Barra de envio (mais compacta) -->
+              <div v-if="activeChat.id" class="bg-gray-100 p-2 flex items-center gap-2">
                 <button @click="triggerFileUpload" class="text-gray-600 hover:text-gray-800 p-2"><i class="fas fa-paperclip"></i></button>
                 <input v-model="newMessage" type="text" placeholder="Mensagem" class="flex-1 p-2 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500" @keyup.enter="sendMessage">
                 <button @click="sendMessage" class="text-whatsapp-green p-2"><i class="fas fa-paper-plane"></i></button>
                 <input type="file" ref="fileInput" class="hidden" @change="handleFileUpload">
               </div>
+              <div v-else class="bg-gray-100 p-2 text-center text-gray-500 text-sm">
+                Selecione uma conversa para começar
+              </div>
             </div>
           </div>
 
-          <!-- Modals (mantidos similares) -->
+          <!-- Modal de Perfil -->
           <div v-if="showProfileModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" @click.self="showProfileModal = false">
             <div class="bg-white p-5 rounded-lg w-full max-w-sm">
               <h2 class="text-lg font-bold mb-4 text-gray-800">Meu Perfil</h2>
