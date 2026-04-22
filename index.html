@@ -9,7 +9,8 @@
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
   <style>
     * { -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #000; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, sans-serif; }
+    html, body { height: 100%; overflow: hidden; background: #000; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, sans-serif; }
+    #app { height: 100%; }
     
     :root {
       --header: #075E54;
@@ -23,22 +24,17 @@
     
     .conversas-container {
       background: white;
-      height: 100dvh;
+      height: 100%;
       display: flex;
       flex-direction: column;
     }
     
     .chat-container {
       background: var(--chat-bg);
-      height: 100dvh;
+      height: 100%;
       display: flex;
       flex-direction: column;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      z-index: 20;
+      position: relative;
     }
     
     .header-green {
@@ -464,7 +460,7 @@
         };
       },
       template: `
-        <div class="h-screen w-screen bg-white">
+        <div style="height: 100%; width: 100%;">
           <!-- Login -->
           <div v-if="!currentUser" class="flex items-center justify-center h-full bg-[#e5ded8] p-4">
             <div class="bg-white p-6 rounded-xl shadow-xl w-full max-w-sm">
@@ -616,7 +612,7 @@
             </div>
           </div>
 
-          <!-- Modals -->
+          <!-- Modals (mantidos) -->
           <div v-if="showProfileModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" @click.self="showProfileModal = false">
             <div class="bg-white p-5 rounded-lg w-full max-w-sm">
               <h2 class="text-lg font-bold mb-4">Perfil</h2>
