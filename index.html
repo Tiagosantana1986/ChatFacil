@@ -3,29 +3,99 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>ChatFacil · Comunicação inteligente</title>
+  <title>ChatFacil · Mensagens</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
   <style>
-    * { -webkit-tap-highlight-color: transparent; }
-    body { margin: 0; background: #0a1014; font-family: 'Segoe UI', 'Helvetica Neue', system-ui, sans-serif; }
-    .bg-whatsapp-header { background: #075E54; }
-    .bg-whatsapp-chat { background: #e5ded8; }
-    .bg-whatsapp-sidebar { background: #111b21; }
-    .text-whatsapp-green { color: #25d366; }
-    .scroll-suave::-webkit-scrollbar { width: 5px; }
-    .scroll-suave::-webkit-scrollbar-thumb { background: #374045; border-radius: 10px; }
-    .msg-propria { background: #d9fdd3; color: #111b21; margin-left: auto; border-radius: 8px 0 8px 8px; }
-    .msg-outro { background: #ffffff; color: #111b21; border-radius: 0 8px 8px 8px; }
-    .badge-unread { background-color: #25d366; color: #111b21; border-radius: 9999px; padding: 0.125rem 0.5rem; font-size: 0.7rem; font-weight: bold; margin-left: 0.5rem; }
-    .avatar-placeholder { background: #6a7178; display: flex; align-items: center; justify-content: center; color: white; font-weight: 500; text-transform: uppercase; }
-    .search-input { background: #202c33; border-radius: 20px; padding: 8px 16px; color: white; border: none; }
-    .search-input::placeholder { color: #8696a0; }
-    .chat-messages-container { flex: 1 1 0%; min-height: 0; }
+    * { -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0a0e13; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+    
+    /* Cores do tema */
+    :root {
+      --primary: #1f8c76;
+      --primary-dark: #1a7562;
+      --sidebar: #111b21;
+      --sidebar-hover: #202c33;
+      --chat-bg: #0b141a;
+      --message-in: #1f2c33;
+      --message-out: #005c4b;
+      --text-primary: #e9edef;
+      --text-secondary: #8696a0;
+      --border-color: #222e35;
+    }
+    
+    .bg-sidebar { background: var(--sidebar); }
+    .bg-chat { background: var(--chat-bg); }
+    .bg-message-out { background: var(--message-out); }
+    .bg-message-in { background: var(--message-in); }
+    .hover-sidebar:hover { background: var(--sidebar-hover); }
+    
+    .text-primary { color: var(--text-primary); }
+    .text-secondary { color: var(--text-secondary); }
+    
+    .border-custom { border-color: var(--border-color); }
+    
+    /* Scrollbar elegante */
+    .custom-scroll::-webkit-scrollbar { width: 6px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #2a373f; border-radius: 10px; }
+    
+    /* Avatar placeholder */
+    .avatar-placeholder {
+      background: #6a7178;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 500;
+      text-transform: uppercase;
+    }
+    
+    /* Balões de mensagem */
+    .msg-bubble {
+      max-width: 65%;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      line-height: 1.4;
+      word-wrap: break-word;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+    .msg-out { background: var(--message-out); color: #fff; border-top-right-radius: 0; }
+    .msg-in { background: var(--message-in); color: #e9edef; border-top-left-radius: 0; }
+    
+    /* Badge não lidas */
+    .badge-unread {
+      background: #00a884;
+      color: #111b21;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    
+    /* Campo de pesquisa */
+    .search-box {
+      background: var(--sidebar-hover);
+      border-radius: 24px;
+      padding: 8px 16px;
+      color: white;
+      border: none;
+    }
+    .search-box::placeholder { color: var(--text-secondary); font-size: 0.9rem; }
+    
+    /* Input de mensagem */
+    .message-input {
+      background: #2a3942;
+      border-radius: 24px;
+      padding: 12px 16px;
+      color: white;
+      border: none;
+    }
+    .message-input::placeholder { color: var(--text-secondary); }
   </style>
 </head>
-<body class="text-gray-200">
+<body class="text-primary">
   <div id="app" class="h-screen flex"></div>
 
   <script>
@@ -85,7 +155,7 @@
         const newMessage = ref('');
         const fileInput = ref(null);
         const searchQuery = ref('');
-        const novaConversaId = ref('');       // <-- ADICIONADO
+        const novaConversaId = ref('');
         const editingPresence = ref('online');
         const avatarInput = ref(null);
 
@@ -294,7 +364,7 @@
           activeChat.id = conv.id;
           activeChat.name = other.login;
           markAsRead('private', conv.id);
-          novaConversaId.value = '';   // limpa select
+          novaConversaId.value = '';
           scrollToBottom();
         }
         function selectGroupChat(groupId) {
@@ -323,7 +393,7 @@
           db, currentUser, loginInput, senhaInput, erroLogin, forcePasswordChange, newPassword1, newPassword2, erroSenha, changePassword,
           showAdminPanel, showNewUserModal, showNewGroupModal, showProfileModal,
           newUserName, newUserPass, newUserAutoApprove, newGroupName, selectedGroupMembers,
-          activeChat, newMessage, fileInput, searchQuery, novaConversaId,     // <-- novaConversaId adicionado
+          activeChat, newMessage, fileInput, searchQuery, novaConversaId,
           visibleUsers, myPrivateChats, myGroups, activeMessages, adminUserList,
           login, logout, generateCredentials, createUser, approveUser, toggleHidden, toggleBlock,
           deleteUser, deleteConversation, deleteGroup, createGroup,
@@ -337,42 +407,51 @@
       template: `
         <div class="h-full w-full flex">
           <!-- Login -->
-          <div v-if="!currentUser" class="flex items-center justify-center h-full w-full p-4 bg-whatsapp-chat">
-            <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-md">
+          <div v-if="!currentUser" class="flex items-center justify-center h-full w-full p-4" style="background: #0b141a;">
+            <div class="bg-[#111b21] p-8 rounded-2xl shadow-2xl w-full max-w-md border border-[#222e35]">
               <div class="text-center mb-6">
-                <i class="fas fa-comment-dots text-6xl text-whatsapp-green"></i>
-                <h1 class="text-3xl font-light text-gray-800 mt-2">ChatFacil</h1>
-                <p class="text-gray-500 text-sm">Comunicação simples e segura</p>
+                <div class="w-16 h-16 mx-auto bg-[#1f8c76] rounded-2xl flex items-center justify-center shadow-lg">
+                  <i class="fas fa-comment-dots text-3xl text-white"></i>
+                </div>
+                <h1 class="text-3xl font-semibold text-white mt-4 tracking-tight">ChatFacil</h1>
+                <p class="text-[#8696a0] text-sm mt-1">Comunicação simples e segura</p>
               </div>
               <form @submit.prevent="login">
-                <input v-model="loginInput" type="text" placeholder="Login" class="w-full p-3 mb-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
-                <input v-model="senhaInput" type="password" placeholder="Senha" class="w-full p-3 mb-6 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
-                <button type="submit" class="w-full bg-whatsapp-green hover:bg-green-600 text-white py-3 rounded-lg font-semibold text-lg shadow-md">Entrar</button>
-                <p v-if="erroLogin" class="text-red-500 text-sm mt-3 text-center">{{ erroLogin }}</p>
+                <div class="mb-4">
+                  <input v-model="loginInput" type="text" placeholder="Login" class="w-full p-3 bg-[#1f2c33] border border-[#2a373f] rounded-xl text-white placeholder-[#8696a0] focus:outline-none focus:ring-2 focus:ring-[#1f8c76]">
+                </div>
+                <div class="mb-6">
+                  <input v-model="senhaInput" type="password" placeholder="Senha" class="w-full p-3 bg-[#1f2c33] border border-[#2a373f] rounded-xl text-white placeholder-[#8696a0] focus:outline-none focus:ring-2 focus:ring-[#1f8c76]">
+                </div>
+                <button type="submit" class="w-full bg-[#1f8c76] hover:bg-[#1a7562] text-white py-3 rounded-xl font-medium transition shadow-lg shadow-[#1f8c76]/20">Entrar</button>
+                <p v-if="erroLogin" class="text-red-400 text-sm mt-3 text-center">{{ erroLogin }}</p>
               </form>
-              <div class="mt-4 text-xs text-gray-400 text-center">Admin: admin / admin123</div>
+              <div class="mt-6 text-xs text-[#8696a0] text-center border-t border-[#222e35] pt-4">
+                Admin: admin / admin123
+              </div>
             </div>
           </div>
 
           <!-- Troca de senha -->
-          <div v-else-if="forcePasswordChange" class="flex items-center justify-center h-full w-full p-4 bg-whatsapp-chat">
-            <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm">
-              <h2 class="text-xl font-semibold mb-4 text-gray-800">🔐 Alterar Senha</h2>
-              <p class="text-sm text-gray-500 mb-4">Primeiro acesso: defina sua senha pessoal</p>
+          <div v-else-if="forcePasswordChange" class="flex items-center justify-center h-full w-full p-4" style="background: #0b141a;">
+            <div class="bg-[#111b21] p-6 rounded-2xl shadow-xl w-full max-w-sm border border-[#222e35]">
+              <h2 class="text-xl font-semibold mb-4 text-white">🔐 Alterar Senha</h2>
+              <p class="text-sm text-[#8696a0] mb-4">Primeiro acesso: defina sua senha pessoal</p>
               <form @submit.prevent="changePassword">
-                <input v-model="newPassword1" type="password" placeholder="Nova senha" class="w-full p-3 mb-3 border rounded-lg">
-                <input v-model="newPassword2" type="password" placeholder="Confirme" class="w-full p-3 mb-4 border rounded-lg">
-                <button type="submit" class="w-full bg-whatsapp-green text-white py-3 rounded-lg font-semibold">Salvar</button>
-                <p v-if="erroSenha" class="text-red-500 text-sm mt-3">{{ erroSenha }}</p>
+                <input v-model="newPassword1" type="password" placeholder="Nova senha" class="w-full p-3 mb-3 bg-[#1f2c33] border border-[#2a373f] rounded-xl text-white">
+                <input v-model="newPassword2" type="password" placeholder="Confirme" class="w-full p-3 mb-4 bg-[#1f2c33] border border-[#2a373f] rounded-xl text-white">
+                <button type="submit" class="w-full bg-[#1f8c76] text-white py-3 rounded-xl font-medium">Salvar</button>
+                <p v-if="erroSenha" class="text-red-400 text-sm mt-3">{{ erroSenha }}</p>
               </form>
             </div>
           </div>
 
           <!-- App principal -->
-          <div v-else class="flex w-full h-full bg-whatsapp-sidebar">
+          <div v-else class="flex w-full h-full">
             <!-- Sidebar -->
-            <div class="w-full md:w-96 flex flex-col h-full border-r border-gray-700">
-              <div class="bg-whatsapp-header p-3 flex justify-between items-center">
+            <div class="w-full md:w-96 bg-sidebar flex flex-col h-full border-r border-custom">
+              <!-- Header -->
+              <div class="p-4 flex justify-between items-center border-b border-custom">
                 <div class="flex items-center gap-3 cursor-pointer" @click="openProfile">
                   <div class="relative">
                     <div v-if="currentUser.avatar" class="w-10 h-10 rounded-full overflow-hidden"><img :src="currentUser.avatar" class="w-full h-full object-cover" /></div>
@@ -381,126 +460,180 @@
                   </div>
                   <span class="text-white font-medium">{{ currentUser.login }}</span>
                 </div>
-                <div class="flex gap-3 text-white">
-                  <button v-if="currentUser.role === 'admin'" @click="showAdminPanel = !showAdminPanel" class="hover:bg-white/10 p-1 rounded-full"><i class="fas fa-cog"></i></button>
-                  <button @click="logout" class="hover:bg-white/10 p-1 rounded-full"><i class="fas fa-sign-out-alt"></i></button>
+                <div class="flex gap-2 text-[#aebac1]">
+                  <button v-if="currentUser.role === 'admin'" @click="showAdminPanel = !showAdminPanel" class="hover:bg-white/10 p-2 rounded-full"><i class="fas fa-cog"></i></button>
+                  <button @click="logout" class="hover:bg-white/10 p-2 rounded-full"><i class="fas fa-sign-out-alt"></i></button>
                 </div>
               </div>
 
               <!-- Admin panel -->
-              <div v-if="showAdminPanel && currentUser.role === 'admin'" class="bg-gray-800 p-3 border-b border-gray-700 space-y-2">
-                <div class="flex justify-between"><h3 class="text-white text-sm font-semibold">👥 Usuários</h3><button @click="showNewUserModal = true" class="text-xs bg-whatsapp-green text-black px-3 py-1 rounded-full">+ Novo</button></div>
-                <div class="max-h-32 overflow-y-auto text-sm space-y-1">
-                  <div v-for="u in db.users" :key="u.id" class="flex items-center justify-between py-1 border-b border-gray-700">
+              <div v-if="showAdminPanel && currentUser.role === 'admin'" class="bg-[#1f2c33] p-3 border-b border-custom space-y-3">
+                <div class="flex justify-between items-center">
+                  <h3 class="text-white text-sm font-semibold">👥 Usuários</h3>
+                  <button @click="showNewUserModal = true" class="text-xs bg-[#1f8c76] text-white px-3 py-1.5 rounded-full">+ Novo</button>
+                </div>
+                <div class="max-h-36 overflow-y-auto custom-scroll text-sm space-y-1">
+                  <div v-for="u in db.users" :key="u.id" class="flex items-center justify-between py-1.5 border-b border-[#2a373f] last:border-0">
                     <div class="flex items-center gap-1 text-white"><span>{{ u.login }}</span><span v-if="!u.passwordChanged" class="text-orange-300 text-xs">⚠️</span></div>
                     <div class="flex gap-1">
-                      <button v-if="u.status==='pending'" @click="approveUser(u.id)" class="text-green-400 text-xs">✓</button>
-                      <button @click="toggleHidden(u.id)" class="text-gray-400 text-xs">{{ u.hidden ? '👁' : '👻' }}</button>
-                      <button v-if="u.role!=='admin'" @click="deleteUser(u.id)" class="text-red-400 text-xs">🗑️</button>
+                      <button v-if="u.status==='pending'" @click="approveUser(u.id)" class="text-green-400 text-xs p-1">✓</button>
+                      <button @click="toggleHidden(u.id)" class="text-gray-400 text-xs p-1">{{ u.hidden ? '👁' : '👻' }}</button>
+                      <button v-if="u.role!=='admin'" @click="deleteUser(u.id)" class="text-red-400 text-xs p-1">🗑️</button>
                     </div>
                   </div>
                 </div>
-                <button @click="showNewGroupModal = true" class="text-xs bg-whatsapp-green text-black px-3 py-1 rounded-full">➕ Novo grupo</button>
+                <button @click="showNewGroupModal = true" class="text-xs bg-[#1f8c76] text-white px-3 py-1.5 rounded-full w-full">➕ Novo grupo</button>
               </div>
 
-              <div class="p-2"><input v-model="searchQuery" type="text" placeholder="Pesquisar conversa" class="search-input w-full"></div>
-
-              <div class="p-2 border-b border-gray-700">
-                <select v-model="novaConversaId" @change="selectPrivateChat(novaConversaId)" class="w-full p-2 bg-gray-700 text-white rounded-lg">
+              <!-- Nova conversa (dropdown) -->
+              <div class="p-3 border-b border-custom">
+                <select v-model="novaConversaId" @change="selectPrivateChat(novaConversaId)" class="w-full p-2.5 bg-[#1f2c33] text-white rounded-xl border border-[#2a373f] focus:outline-none focus:ring-2 focus:ring-[#1f8c76]">
                   <option value="">➕ Nova conversa privada...</option>
                   <option v-for="u in visibleUsers" :key="u.id" :value="u.id">{{ u.login }}</option>
                 </select>
               </div>
 
-              <div class="flex-1 overflow-y-auto scroll-suave">
-                <div v-for="chat in myPrivateChats" :key="chat.id" @click="selectPrivateChat(chat.other.id)" class="flex items-center p-3 hover:bg-gray-800 cursor-pointer border-b border-gray-700">
+              <!-- Pesquisa -->
+              <div class="p-3">
+                <input v-model="searchQuery" type="text" placeholder="Pesquisar conversa" class="search-box w-full">
+              </div>
+
+              <!-- Lista de conversas -->
+              <div class="flex-1 overflow-y-auto custom-scroll">
+                <div v-for="chat in myPrivateChats" :key="chat.id" @click="selectPrivateChat(chat.other.id)" class="flex items-center p-3 hover-sidebar cursor-pointer border-b border-custom">
                   <div class="relative mr-3">
                     <div v-if="chat.other.avatar" class="w-12 h-12 rounded-full overflow-hidden"><img :src="chat.other.avatar" class="w-full h-full object-cover" /></div>
                     <div v-else class="avatar-placeholder w-12 h-12 rounded-full">{{ getInitials(chat.other.login) }}</div>
-                    <span class="absolute -bottom-0.5 -right-0.5 text-xs">{{ getPresenceDot(chat.other.presence) }}</span>
+                    <span class="absolute -bottom-0.5 -right-0.5 text-sm">{{ getPresenceDot(chat.other.presence) }}</span>
                   </div>
                   <div class="flex-1 min-w-0">
-                    <div class="flex justify-between"><span class="text-white font-medium truncate">{{ chat.other.login }}</span><span class="text-xs text-gray-400">{{ chat.lastMsg ? formatLastMessageTime(chat.lastMsg.createdAt) : '' }}</span></div>
-                    <div class="flex justify-between"><span class="text-sm text-gray-400 truncate">{{ chat.lastMsg ? (chat.lastMsg.text || '📎 Arquivo') : 'Nenhuma mensagem' }}</span><span v-if="unreadCount('private', chat.id) > 0" class="badge-unread">{{ unreadCount('private', chat.id) }}</span></div>
+                    <div class="flex justify-between items-center">
+                      <span class="text-white font-medium truncate">{{ chat.other.login }}</span>
+                      <span class="text-xs text-secondary">{{ chat.lastMsg ? formatLastMessageTime(chat.lastMsg.createdAt) : '' }}</span>
+                    </div>
+                    <div class="flex justify-between items-center mt-0.5">
+                      <span class="text-sm text-secondary truncate">{{ chat.lastMsg ? (chat.lastMsg.text || '📎 Arquivo') : 'Nenhuma mensagem' }}</span>
+                      <span v-if="unreadCount('private', chat.id) > 0" class="badge-unread">{{ unreadCount('private', chat.id) }}</span>
+                    </div>
                   </div>
                 </div>
-                <div v-for="group in myGroups" :key="group.id" @click="selectGroupChat(group.id)" class="flex items-center p-3 hover:bg-gray-800 cursor-pointer border-b border-gray-700">
-                  <div class="w-12 h-12 rounded-full bg-gray-600 flex items-center justify-center mr-3"><i class="fas fa-users text-white"></i></div>
-                  <div class="flex-1"><div class="flex justify-between"><span class="text-white font-medium">{{ group.name }}</span><span v-if="unreadCount('group', group.id) > 0" class="badge-unread">{{ unreadCount('group', group.id) }}</span></div></div>
+                <!-- Grupos -->
+                <div v-for="group in myGroups" :key="group.id" @click="selectGroupChat(group.id)" class="flex items-center p-3 hover-sidebar cursor-pointer border-b border-custom">
+                  <div class="w-12 h-12 rounded-full bg-[#1f8c76] flex items-center justify-center mr-3 text-white"><i class="fas fa-users"></i></div>
+                  <div class="flex-1">
+                    <div class="flex justify-between items-center">
+                      <span class="text-white font-medium">{{ group.name }}</span>
+                      <span v-if="unreadCount('group', group.id) > 0" class="badge-unread">{{ unreadCount('group', group.id) }}</span>
+                    </div>
+                  </div>
+                </div>
+                <div v-if="myPrivateChats.length === 0 && myGroups.length === 0" class="text-center text-secondary p-8">
+                  <i class="fas fa-comments text-3xl mb-2 opacity-50"></i>
+                  <p>Nenhuma conversa ainda</p>
+                  <p class="text-xs mt-1">Use o menu acima para iniciar</p>
                 </div>
               </div>
             </div>
 
             <!-- Chat area -->
-            <div class="flex-1 flex flex-col h-full bg-whatsapp-chat min-w-0">
-              <div class="bg-whatsapp-header p-3 flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center text-white"><i v-if="activeChat.type==='private'" class="fas fa-user"></i><i v-else-if="activeChat.type==='group'" class="fas fa-users"></i></div>
+            <div class="flex-1 flex flex-col h-full bg-chat min-w-0">
+              <!-- Cabeçalho do chat -->
+              <div class="p-4 flex items-center gap-3 border-b border-custom bg-sidebar/50">
+                <div class="w-10 h-10 rounded-full bg-[#1f8c76] flex items-center justify-center text-white">
+                  <i v-if="activeChat.type==='private'" class="fas fa-user"></i>
+                  <i v-else-if="activeChat.type==='group'" class="fas fa-users"></i>
+                </div>
                 <div class="text-white font-medium">{{ activeChat.name || 'ChatFacil' }}</div>
               </div>
 
-              <div id="messages-container" class="chat-messages-container overflow-y-auto p-4 space-y-2 scroll-suave" style="background-image:url('https://web.whatsapp.com/img/bg-chat-tile-light_04fcacde539c58cca6745483d4858c52.png'); background-size:contain;">
+              <!-- Mensagens -->
+              <div id="messages-container" class="flex-1 overflow-y-auto p-4 space-y-3 custom-scroll" style="background-image: url('https://web.whatsapp.com/img/bg-chat-tile-dark_a4be512e7195b6b733d9110b408f075d.png'); background-size: contain;">
                 <div v-for="msg in activeMessages" :key="msg.id" class="flex gap-2" :class="{'flex-row-reverse': msg.senderId === currentUser.id}">
                   <div v-if="msg.senderId !== currentUser.id" class="flex-shrink-0">
                     <div v-if="getSender(msg.senderId)?.avatar" class="w-8 h-8 rounded-full overflow-hidden"><img :src="getSender(msg.senderId).avatar" class="w-full h-full object-cover" /></div>
                     <div v-else class="avatar-placeholder w-8 h-8 rounded-full text-xs">{{ getInitials(getSenderName(msg.senderId)) }}</div>
                   </div>
-                  <div class="max-w-[75%]">
-                    <div v-if="msg.senderId !== currentUser.id" class="text-xs text-gray-600 ml-1 mb-0.5">{{ getSenderName(msg.senderId) }}</div>
-                    <div v-if="msg.text" class="p-2 text-sm shadow" :class="msg.senderId === currentUser.id ? 'msg-propria' : 'msg-outro'">{{ msg.text }}</div>
+                  <div class="max-w-[70%]">
+                    <div v-if="msg.senderId !== currentUser.id" class="text-xs text-secondary ml-1 mb-0.5">{{ getSenderName(msg.senderId) }}</div>
+                    <div v-if="msg.text" class="msg-bubble" :class="msg.senderId === currentUser.id ? 'msg-out' : 'msg-in'">{{ msg.text }}</div>
                     <div v-if="msg.file" class="mt-1">
                       <div v-if="isImageFile(msg.file.type)" class="max-w-xs cursor-pointer" @click="downloadFile(msg.file.data, msg.file.name)"><img :src="msg.file.data" class="rounded-lg shadow" /></div>
-                      <div v-else class="bg-white p-3 rounded-lg shadow flex items-center gap-2"><i class="fas fa-file text-gray-500"></i><span class="truncate">{{ msg.file.name }}</span><button @click="downloadFile(msg.file.data, msg.file.name)" class="text-blue-500"><i class="fas fa-download"></i></button></div>
+                      <div v-else class="bg-[#1f2c33] p-3 rounded-lg shadow flex items-center gap-2"><i class="fas fa-file text-secondary"></i><span class="truncate">{{ msg.file.name }}</span><button @click="downloadFile(msg.file.data, msg.file.name)" class="text-[#1f8c76]"><i class="fas fa-download"></i></button></div>
                     </div>
-                    <div class="text-xs text-gray-500 mt-1 text-right">{{ new Date(msg.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) }}</div>
+                    <div class="text-xs text-secondary mt-1 text-right">{{ new Date(msg.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) }}</div>
                   </div>
+                </div>
+                <div v-if="activeMessages.length === 0 && activeChat.id" class="text-center text-secondary py-12">
+                  <i class="far fa-smile text-4xl mb-3 opacity-40"></i>
+                  <p>Nenhuma mensagem ainda</p>
+                  <p class="text-xs mt-1">Envie uma mensagem para começar</p>
                 </div>
               </div>
 
-              <div v-if="activeChat.id" class="bg-gray-100 p-2 flex items-center gap-2">
-                <button @click="triggerFileUpload" class="text-gray-600 p-2"><i class="fas fa-paperclip"></i></button>
-                <input v-model="newMessage" @keyup.enter="sendMessage" type="text" placeholder="Mensagem" class="flex-1 p-2 rounded-full border focus:ring-2 focus:ring-green-500">
-                <button @click="sendMessage" class="text-whatsapp-green p-2"><i class="fas fa-paper-plane"></i></button>
+              <!-- Input -->
+              <div v-if="activeChat.id" class="p-3 bg-sidebar/50 flex items-center gap-2">
+                <button @click="triggerFileUpload" class="text-secondary hover:text-white p-2"><i class="fas fa-paperclip"></i></button>
+                <input v-model="newMessage" @keyup.enter="sendMessage" type="text" placeholder="Digite uma mensagem" class="message-input flex-1">
+                <button @click="sendMessage" class="text-[#1f8c76] hover:text-white p-2"><i class="fas fa-paper-plane"></i></button>
                 <input type="file" ref="fileInput" class="hidden" @change="handleFileUpload">
               </div>
-              <div v-else class="bg-gray-100 p-2 text-center text-gray-500 text-sm">Selecione uma conversa</div>
+              <div v-else class="p-3 bg-sidebar/50 text-center text-secondary text-sm">
+                <i class="far fa-comment-dots mr-2"></i> Selecione uma conversa para começar
+              </div>
             </div>
           </div>
 
-          <!-- Modals -->
-          <div v-if="showProfileModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" @click.self="showProfileModal = false">
-            <div class="bg-white p-5 rounded-lg w-full max-w-sm">
-              <h2 class="text-lg font-bold mb-4">Perfil</h2>
+          <!-- Modals (mantidos com estilo escuro) -->
+          <div v-if="showProfileModal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" @click.self="showProfileModal = false">
+            <div class="bg-[#111b21] p-5 rounded-2xl w-full max-w-sm border border-[#222e35]">
+              <h2 class="text-lg font-bold mb-4 text-white">Meu Perfil</h2>
               <div class="flex flex-col items-center mb-4">
                 <div class="relative mb-2">
                   <div v-if="currentUser.avatar" class="w-20 h-20 rounded-full overflow-hidden"><img :src="currentUser.avatar" class="w-full h-full object-cover" /></div>
                   <div v-else class="avatar-placeholder w-20 h-20 rounded-full text-2xl">{{ getInitials(currentUser.login) }}</div>
-                  <label class="absolute bottom-0 right-0 bg-gray-200 p-1 rounded-full cursor-pointer"><i class="fas fa-camera"></i><input type="file" accept="image/*" class="hidden" @change="handleAvatarUpload" ref="avatarInput"></label>
+                  <label class="absolute bottom-0 right-0 bg-[#1f8c76] p-1.5 rounded-full cursor-pointer shadow-lg"><i class="fas fa-camera text-white text-xs"></i><input type="file" accept="image/*" class="hidden" @change="handleAvatarUpload" ref="avatarInput"></label>
                 </div>
               </div>
-              <div class="mb-4"><label class="block text-sm mb-1">Status</label><select v-model="editingPresence" class="w-full p-2 border rounded"><option value="online">🟢 Disponível</option><option value="busy">🟡 Ocupado</option><option value="away">🟠 Ausente</option><option value="offline">🔴 Offline</option></select></div>
-              <div class="flex gap-2"><button @click="saveProfile" class="flex-1 bg-whatsapp-green text-white py-2 rounded-lg">Salvar</button><button @click="showProfileModal = false" class="flex-1 bg-gray-300 py-2 rounded-lg">Cancelar</button></div>
-            </div>
-          </div>
-
-          <div v-if="showNewUserModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" @click.self="showNewUserModal = false">
-            <div class="bg-white p-5 rounded-lg w-full max-w-md">
-              <h2 class="text-lg font-bold mb-4">Criar usuário</h2>
-              <div class="space-y-3">
-                <input v-model="newUserName" placeholder="Login" class="w-full p-2 border rounded">
-                <input v-model="newUserPass" placeholder="Senha temporária" class="w-full p-2 border rounded">
-                <div class="flex items-center gap-2"><input type="checkbox" v-model="newUserAutoApprove" id="auto"><label for="auto">Aprovar automaticamente</label></div>
-                <button @click="generateCredentials" class="text-sm text-blue-500">🎲 Gerar aleatório</button>
+              <div class="mb-4">
+                <label class="block text-sm mb-1 text-secondary">Status</label>
+                <select v-model="editingPresence" class="w-full p-2 bg-[#1f2c33] border border-[#2a373f] rounded-xl text-white">
+                  <option value="online">🟢 Disponível</option><option value="busy">🟡 Ocupado</option><option value="away">🟠 Ausente</option><option value="offline">🔴 Offline</option>
+                </select>
               </div>
-              <div class="flex gap-2 mt-5"><button @click="createUser" class="flex-1 bg-whatsapp-green text-white py-2 rounded-lg">Criar</button><button @click="showNewUserModal = false" class="flex-1 bg-gray-300 py-2 rounded-lg">Cancelar</button></div>
+              <div class="flex gap-2">
+                <button @click="saveProfile" class="flex-1 bg-[#1f8c76] text-white py-2 rounded-xl font-medium">Salvar</button>
+                <button @click="showProfileModal = false" class="flex-1 bg-[#2a373f] text-white py-2 rounded-xl">Cancelar</button>
+              </div>
             </div>
           </div>
 
-          <div v-if="showNewGroupModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" @click.self="showNewGroupModal = false">
-            <div class="bg-white p-5 rounded-lg w-full max-w-md">
-              <h2 class="text-lg font-bold mb-4">Criar grupo</h2>
-              <input v-model="newGroupName" placeholder="Nome do grupo" class="w-full p-2 mb-3 border rounded">
-              <div class="max-h-52 overflow-y-auto border rounded p-2 mb-3"><div v-for="u in adminUserList" :key="u.id" class="flex items-center gap-2 py-1"><input type="checkbox" :value="u.id" v-model="selectedGroupMembers"><span>{{ u.login }}</span></div></div>
-              <div class="flex gap-2"><button @click="createGroup" class="flex-1 bg-whatsapp-green text-white py-2 rounded-lg">Criar</button><button @click="showNewGroupModal = false" class="flex-1 bg-gray-300 py-2 rounded-lg">Cancelar</button></div>
+          <div v-if="showNewUserModal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" @click.self="showNewUserModal = false">
+            <div class="bg-[#111b21] p-5 rounded-2xl w-full max-w-md border border-[#222e35]">
+              <h2 class="text-lg font-bold mb-4 text-white">Criar usuário</h2>
+              <div class="space-y-3">
+                <input v-model="newUserName" placeholder="Login" class="w-full p-2.5 bg-[#1f2c33] border border-[#2a373f] rounded-xl text-white">
+                <input v-model="newUserPass" placeholder="Senha temporária" class="w-full p-2.5 bg-[#1f2c33] border border-[#2a373f] rounded-xl text-white">
+                <div class="flex items-center gap-2 text-secondary"><input type="checkbox" v-model="newUserAutoApprove" id="auto"><label for="auto">Aprovar automaticamente</label></div>
+                <button @click="generateCredentials" class="text-sm text-[#1f8c76]">🎲 Gerar aleatório</button>
+              </div>
+              <div class="flex gap-2 mt-5">
+                <button @click="createUser" class="flex-1 bg-[#1f8c76] text-white py-2 rounded-xl">Criar</button>
+                <button @click="showNewUserModal = false" class="flex-1 bg-[#2a373f] text-white py-2 rounded-xl">Cancelar</button>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="showNewGroupModal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" @click.self="showNewGroupModal = false">
+            <div class="bg-[#111b21] p-5 rounded-2xl w-full max-w-md border border-[#222e35]">
+              <h2 class="text-lg font-bold mb-4 text-white">Criar grupo</h2>
+              <input v-model="newGroupName" placeholder="Nome do grupo" class="w-full p-2.5 mb-3 bg-[#1f2c33] border border-[#2a373f] rounded-xl text-white">
+              <div class="max-h-52 overflow-y-auto custom-scroll border border-[#2a373f] rounded-xl p-2 mb-3">
+                <div v-for="u in adminUserList" :key="u.id" class="flex items-center gap-2 py-1.5 text-white"><input type="checkbox" :value="u.id" v-model="selectedGroupMembers"><span>{{ u.login }}</span></div>
+              </div>
+              <div class="flex gap-2">
+                <button @click="createGroup" class="flex-1 bg-[#1f8c76] text-white py-2 rounded-xl">Criar</button>
+                <button @click="showNewGroupModal = false" class="flex-1 bg-[#2a373f] text-white py-2 rounded-xl">Cancelar</button>
+              </div>
             </div>
           </div>
         </div>
