@@ -146,7 +146,7 @@
   <div id="app"></div>
 
   <script>
-    const { createApp, ref, reactive, computed, watch, nextTick } = Vue;
+    const { createApp, ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } = Vue;
 
     const STORAGE_KEY = 'chat_facil_db';
     const MAX_FILE_SIZE = 2 * 1024 * 1024;
@@ -179,7 +179,26 @@
     const app = createApp({
       setup() {
         const db = reactive(loadDB());
-        watch(db, (newVal) => { saveDB(newVal); }, { deep: true });
+        
+        // Sincronização entre abas
+        function handleStorageChange(e) {
+          if (e.key === STORAGE_KEY) {
+            const newDb = JSON.parse(e.newValue);
+            // Atualiza o objeto reativo sem perder a referência
+            Object.assign(db, newDb);
+            // Se estiver em uma conversa, força atualização
+            if (activeChat.id) {
+              markAsRead(activeChat.type, activeChat.id);
+            }
+          }
+        }
+        
+        window.addEventListener('storage', handleStorageChange);
+        onUnmounted(() => window.removeEventListener('storage', handleStorageChange));
+
+        watch(db, (newVal) => {
+          saveDB(newVal);
+        }, { deep: true });
 
         const currentUser = ref(null);
         const loginInput = ref('');
@@ -442,6 +461,13 @@
         }
 
         function downloadFile(url, name) { const a = document.createElement('a'); a.href = url; a.download = name; a.click(); }
+
+        // Força atualização quando recebe mensagem de outra aba
+        watch(() => db.messages.length, () => {
+          if (activeChat.id) {
+            scrollToBottom();
+          }
+        });
 
         return {
           db, currentUser, loginInput, senhaInput, erroLogin, forcePasswordChange, newPassword1, newPassword2, erroSenha, changePassword,
